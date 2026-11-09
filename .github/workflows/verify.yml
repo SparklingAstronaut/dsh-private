@@ -1,0 +1,51 @@
+name: Verify source and Windows build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24.15.0'
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.12'
+      - name: Privacy regression tests
+        run: npm test
+      - name: Build verifier regression tests
+        run: python -m unittest discover -s test -p '*_test.py'
+      - name: Scan public source
+        run: python scripts/scan_release.py .
+      - name: Build from hash-pinned upstream files
+        run: python scripts/build.py
+      - name: Exercise the packaged private runtime
+        run: node scripts/smoke.mjs dist/DSH-Private
+      - name: Verify package against source and input hashes
+        run: python scripts/verify_build.py dist/DSH-Private --require-clean-source --report dist/build-verification.json
+      - name: Scan portable distribution
+        run: python scripts/scan_release.py dist/DSH-Private
+      - name: Package verified build
+        run: python scripts/package_release.py dist/DSH-Private
+      - name: Upload verified Windows package
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: verified-windows-preview
+          path: |
+            dist/release/*
+            dist/build-verification.json
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
