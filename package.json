@@ -1,0 +1,9 @@
+{
+  "name": "dsh-private",
+  "version": "0.1.0-preview.1",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "scripts": {"test": "node --test test/*.test.mjs"},
+  "engines": {"node": ">=24"}
+}

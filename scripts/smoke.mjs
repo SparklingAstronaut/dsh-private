@@ -1,0 +1,78 @@
+// Integration check against a built portable app. Uses a new synthetic vault and a mock local model.
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import http from 'node:http';
+import assert from 'node:assert/strict';
+import {pathToFileURL} from 'node:url';
+import {randomBytes} from 'node:crypto';
+const build=path.resolve(process.argv[2]||'dist/DSH-Private');
+const root=fs.mkdtempSync(path.join(os.tmpdir(),'dsh-private-smoke-'));
+const app=path.join(build,'resources/private/app');
+let calls=0;
+const server=http.createServer(async(req,res)=>{
+ if(req.url==='/v1/models'){res.setHeader('Content-Type','application/json');res.end(JSON.stringify({data:[{id:'synthetic-model'}]}));return;}
+ if(req.url==='/v1/chat/completions'){let text='';for await(const chunk of req)text+=chunk;const input=JSON.parse(text);assert.equal(input.model,'synthetic-model');calls++;
+  if(input.stream){res.writeHead(200,{'Content-Type':'text/event-stream'});for(const delta of [{role:'assistant'},{content:'703'}])res.write('data: '+JSON.stringify({id:'synthetic',object:'chat.completion.chunk',created:1,model:'synthetic-model',choices:[{index:0,delta,finish_reason:null}]})+'\n\n');res.end('data: '+JSON.stringify({id:'synthetic',object:'chat.completion.chunk',created:1,model:'synthetic-model',choices:[{index:0,delta:{},finish_reason:'stop'}],usage:{prompt_tokens:10,completion_tokens:1,total_tokens:11}})+'\n\ndata: [DONE]\n\n');}
+  else{res.setHeader('Content-Type','application/json');res.end(JSON.stringify({choices:[{message:{role:'assistant',content:'703'}}]}));}return;}
+ res.writeHead(404).end();
+});
+await new Promise(r=>server.listen(0,'127.0.0.1',r));
+const baseUrl='http://127.0.0.1:'+server.address().port+'/v1';
+process.env.DSH_PRIVATE_DATA_ROOT=root;
+process.env.DSH_PRIVATE_SETTINGS=JSON.stringify({baseUrl,modelA:'synthetic-model',modelB:'synthetic-model',locale:'en-US'});
+process.env.DSH_PRIVATE_DESKTOP_ROOT=path.join(build,'resources/app');
+process.env.DSH_HOME=path.join(root,'empty-home');
+process.env.DSH_TELEMETRY_DISABLED='1';
+for(const name of ['empty-home','presets'])fs.mkdirSync(path.join(root,name),{recursive:true});
+const presets=path.join(app,'addons/incognito/presets');
+for(const rel of fs.readdirSync(presets,{recursive:true})){const from=path.join(presets,rel),to=path.join(root,'presets',rel);if(!fs.statSync(from).isFile())continue;fs.mkdirSync(path.dirname(to),{recursive:true});fs.writeFileSync(to,fs.readFileSync(from,'utf8').replaceAll('@private/',path.join(app,'addons/incognito/').replaceAll('\\','/')).replaceAll('@data/',root.replaceAll('\\','/')+'/'));}
+const importApp=rel=>import(pathToFileURL(path.join(app,rel)).href);
+const {Backend}=await importApp('addons/incognito/backend.mjs');
+const {PrivateRuntime}=await importApp('addons/incognito/runtime.mjs');
+const provider={displayName:'Synthetic local model',api:'openai-completions',apiKeyEnv:'QQZ_LOCAL_API_KEY',baseURL:baseUrl,compat:{supportsStore:false,supportsDeveloperRole:false,supportsReasoningEffort:false,maxTokensField:'max_tokens'},models:[{id:'synthetic-model',name:'synthetic-model',contextWindow:32768,maxTokens:4096,input:['text']}]};
+const bridge={status:()=>({model:'Heretic',status:'ready'}),select:async()=>{},activity(){},stop:async()=>{},privateSettings:()=>({'llm-pi-ai':{providers:{'qqz-kvmem':provider}},'locale':{preference:'en'}}),privateExecutionConfig:()=>({config:{cwd:root}})};
+const backend=new Backend({root:path.join(root,'vault'),bridge:()=>bridge});
+const password=randomBytes(24).toString('base64url');
+let runtime;
+try{
+ await backend.vault.initialize(password);await backend.action('unlock',{password});
+ const id=backend.vault.create('Heretic');await backend.send(id,'Synthetic check: 37 * 19');
+ for(let i=0;i<100&&backend.pending.size;i++)await new Promise(r=>setTimeout(r,50));
+ assert.equal(backend.vault.get(id).messages.at(-1).content,'703');assert.equal(calls,1);
+ backend.vault.save(id);const encrypted=fs.readFileSync(backend.vault.file);assert(!encrypted.includes('Synthetic check'));
+ backend.lock();await backend.action('unlock',{password});assert.equal(backend.vault.get(id).messages.at(-1).content,'703');
+ runtime=new PrivateRuntime(backend);
+ await runtime.start([]);
+ assert((await runtime.call('model-catalog')).some(m=>m.id==='synthetic-model'));
+ assert.equal((await fetch(runtime.origin)).status,403);
+ let cookie='';
+ let response=await fetch(runtime.url,{headers:{'X-DSH-Private':runtime.token},redirect:'manual'});
+ if(response.status>=300&&response.status<400){
+  cookie=response.headers.getSetCookie().map(c=>c.split(';')[0]).join('; ');
+  response=await fetch(new URL(response.headers.get('location'),runtime.url),{headers:{'X-DSH-Private':runtime.token,Cookie:cookie}});
+ }
+ assert.equal(response.status,200);
+ const html=await response.text();
+ assert(html.includes('<html'));
+ assert(html.includes('dsh-incognito-client'),'Private chat controls must be included in the browser boot graph');
+ const rpc=async(method,args)=>{
+  const response=await fetch(runtime.origin+'/api/'+method,{method:'POST',headers:{'X-DSH-Private':runtime.token,Cookie:cookie,'Content-Type':'application/json'},body:JSON.stringify({type:'client-request',rpcId:'smoke-'+method,method,payload:{args}})});
+  const envelope=await response.json();assert.equal(envelope.result?.ok,true,JSON.stringify(envelope));return envelope.result.value;
+ };
+ const workspaces=await rpc('workspace/create',{request:{path:path.join(root,'empty-home')}});
+ const created=await rpc('session/create',{request:{workspaceId:workspaces.workspace.workspaceId,agentPreset:'standard'}});
+ await rpc('session/prompt',{request:{sessionId:created.sessionId,requestId:'synthetic-prompt',mode:'queue',content:[{type:'text',text:'Synthetic check: 37 * 19'}]}});
+ let snapshot;
+ for(let i=0;i<100;i++){await new Promise(r=>setTimeout(r,100));snapshot=await runtime.call('snapshot');if(JSON.stringify(snapshot).includes('703'))break;}
+ assert(JSON.stringify(snapshot).includes('703'),'The real DSH session route must receive the mock model reply');
+ await runtime.save(created.sessionId);
+ const savedSession=fs.readFileSync(backend.vault.file);assert(!savedSession.includes('Synthetic check'));
+ await runtime.stop();runtime=null;backend.lock();assert.equal(backend.vault.key,null);
+ assert(fs.readFileSync(backend.vault.file).equals(savedSession));
+ await backend.action('unlock',{password});assert(backend.vault.snapshot().some(row=>row.runtime?.header.id===created.sessionId&&JSON.stringify(row.runtime.events).includes('703')));backend.lock();
+ console.log('PASS portable runtime boot, authenticated UI route, mock local chat, encrypted readback, and shutdown.');
+}finally{
+ await runtime?.stop().catch(()=>{});backend.lock();server.closeAllConnections();await new Promise(r=>server.close(r));
+ assert.equal(path.dirname(root),os.tmpdir());assert(path.basename(root).startsWith('dsh-private-smoke-'));fs.rmSync(root,{recursive:true});
+}

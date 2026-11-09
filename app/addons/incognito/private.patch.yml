@@ -1,0 +1,166 @@
+- id: settings
+  disabled: true
+- id: config-editor
+  disabled: true
+- insert:
+    - id: private-config-editor
+      name: '@private/memory-config-editor.mjs'
+- id: ptc-runtime
+  disabled: true
+- insert:
+    - id: private-ptc
+      name: '@private/private-ptc.mjs'
+- id: pwsh-sandbox
+  disabled: true
+- insert:
+    - id: private-shell
+      name: '@private/private-shell.mjs'
+- id: credentials
+  disabled: true
+- id: directory-picker
+  disabled: true
+- id: storage-json
+  disabled: true
+- id: session-persistence-jsonl
+  disabled: true
+- id: spill-local
+  disabled: true
+- id: spill-policy
+  disabled: true
+- insert:
+    - id: private-client
+      name: '@private/native-client/index.mjs'
+    - id: private-credentials
+      name: '@private/memory-credentials.mjs'
+    - id: private-settings
+      name: '@private/memory-settings.mjs'
+    - id: private-storage
+      name: '@private/memory-storage.mjs'
+    - id: private-sessions
+      name: '@private/memory-sessions.mjs'
+- id: web-startup
+  disabled: true
+- id: web-runtime
+  config:
+    openBrowser: false
+    printUrl: false
+    surfaceContext: false
+    trustedHosts: []
+- id: agent-default-model
+  config:
+    provider: qqz-kvmem
+    model: '@model-a'
+- id: agent-presets
+  config:
+    default: standard
+    includeUserRoot: false
+- insert:
+    - id: private-guard
+      name: '@private/private-guard.mjs'
+- id: session-telemetry-otel
+  disabled: true
+
+- id: hmr
+  disabled: true
+
+- id: plugin-manager
+  disabled: true
+
+- id: session-title-llm
+  disabled: true
+
+- id: file-upload
+  disabled: true
+
+- id: session-log-download
+  disabled: true
+
+- id: open-in-app
+  disabled: true
+
+- id: ui-open-in-app
+  disabled: true
+
+- id: skill-filesystem
+  disabled: true
+
+- id: tool-subagent
+  disabled: true
+
+- id: tool-subagent-fork
+  disabled: true
+
+- id: web-search-deepseek
+  disabled: true
+
+- id: web-fetch-http
+  disabled: false
+
+- id: tool-web
+  disabled: true
+
+- id: llm-deepseek
+  disabled: true
+
+- id: client-hmr
+  disabled: true
+
+- id: message-feedback
+  disabled: true
+
+- id: ui-message-feedback
+  disabled: true
+
+- id: file-upload
+  disabled: false
+
+- id: attachment-local
+  disabled: true
+- insert:
+    - id: private-attachments
+      name: '@private/memory-attachments.mjs'
+    - id: private-image-tool
+      name: '@private/image-tool.mjs'
+
+- id: fs-sandbox
+  disabled: true
+- insert:
+    - id: private-fs
+      name: '@private/memory-fs.mjs'
+
+- insert:
+    - id: private-mcp
+      name: '@private/mcp-tools.mjs'
+
+- id: tool-fs-search
+  name: '@private/memory-search.mjs'
+- insert:
+    - id: private-directory-picker
+      name: '@private/private-directory-picker.mjs'
+    - id: private-directory-picker-client
+      name: '@deepseek-ai/dsh-client-ui-directory-picker-native'
+
+- id: agent-presets
+  config:
+    default: standard
+    includeUserRoot: false
+    includeShippedRoot: false
+    roots:
+      - path: '@data/presets'
+        trust: system
+
+- id: workspace-changes
+  disabled: true
+- insert:
+    - id: private-workspace-changes
+      name: '@private/memory-changes.mjs'
+
+- insert:
+    - id: private-web-search
+      name: '@private/private-web-search.mjs'
+
+
+
+- insert:
+    - id: private-prompt-skills
+      name: '@private/prompt-skills.mjs'
