@@ -1,0 +1,14 @@
+{
+  "desktop": {
+    "version": "2.0.14-beta.1",
+    "url": "https://github.com/anywhere-labs/dsh-desktop/releases/download/v2.0.14-beta.1/DSH-Desktop-Beta-2.0.14-beta.1-x64-Setup.exe",
+    "sha256": "547e686ff68d22dfca5521a67d6c4d02f605fb300640fc6ba725b7727bb6bd18",
+    "treeSha256": "9d4f171eed8971c9238a09e3edc72bd657351a5f5babc0b7f4f22b1d581f6514"
+  },
+  "node": {
+    "version": "24.15.0",
+    "url": "https://nodejs.org/dist/v24.15.0/win-x64/node.exe",
+    "sha256": "3331e1ffe19874215472217c5e94f5a0c6d8e18c4ac7111d3937aa0ad5e9b4a5",
+    "licenseSha256": "4573185d56580da2b890ba34a85a409257640f1c5632eade4300137266194d18"
+  }
+}

@@ -10,16 +10,17 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/SparklingAstronaut/dsh-private/releases/tag/v0.1.0-preview.2"><img src="https://img.shields.io/badge/release-Preview%202-8b9fbb?style=flat-square" alt="Preview 2"></a>
+  <a href="https://github.com/SparklingAstronaut/dsh-private/actions/workflows/verify.yml"><img src="https://github.com/SparklingAstronaut/dsh-private/actions/workflows/verify.yml/badge.svg" alt="Windows build verification"></a>
+  <a href="https://github.com/SparklingAstronaut/dsh-private/releases/tag/v0.1.0-preview.3"><img src="https://img.shields.io/badge/release-Preview%203-8b9fbb?style=flat-square" alt="Preview 3"></a>
   <img src="https://img.shields.io/badge/Windows-10%20%2F%2011%20%C2%B7%20x64-536782?style=flat-square" alt="Windows 10 / 11 x64">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-607d73?style=flat-square" alt="MIT 许可证"></a>
 </p>
 
-<h3 align="center"><a href="https://github.com/SparklingAstronaut/dsh-private/releases/download/v0.1.0-preview.2/DSH-Private-0.1.0-preview.2-windows-x64.zip">下载 Windows 版 ↗</a></h3>
+<h3 align="center"><a href="https://github.com/SparklingAstronaut/dsh-private/releases/download/v0.1.0-preview.3/DSH-Private-0.1.0-preview.3-windows-x64.zip">下载 Windows 版 ↗</a></h3>
 
 <p align="center">
-  <a href="https://github.com/SparklingAstronaut/dsh-private/releases/tag/v0.1.0-preview.2">更新说明</a> ·
-  <a href="https://github.com/SparklingAstronaut/dsh-private/releases/download/v0.1.0-preview.2/SHA256SUMS.txt">SHA-256 校验值</a> ·
+  <a href="https://github.com/SparklingAstronaut/dsh-private/releases/tag/v0.1.0-preview.3">更新说明</a> ·
+  <a href="https://github.com/SparklingAstronaut/dsh-private/releases/download/v0.1.0-preview.3/SHA256SUMS.txt">SHA-256 校验值</a> ·
   <a href="docs/configuration.md">配置说明</a> ·
   <a href="README.md">English</a>
 </p>
@@ -64,7 +65,7 @@
 
 核心聊天和初始设置支持英文，部分高级隐私及 Studio 对话框目前使用中文标签。
 
-**Preview 2 更新：** 修复了重开纯文字存档后误提示“未保存内容”的问题，保持原有加密存档格式兼容。[查看此版本 →](https://github.com/SparklingAstronaut/dsh-private/releases/tag/v0.1.0-preview.2)
+**Preview 3 更新：** 大文件缓存改为加密保存，缓存密钥仅留在内存中；异常退出后会在启动时恢复清理，并提供公开的 Windows 构建验证。原有加密存档保持兼容，Preview 2 的重开存档误提示修复也继续保留。[查看此版本 →](https://github.com/SparklingAstronaut/dsh-private/releases/tag/v0.1.0-preview.3)
 
 <details>
 <summary><strong>可选功能：图片、Studio、工具与 MCP</strong></summary>

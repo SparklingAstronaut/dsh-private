@@ -4,6 +4,7 @@ import {selectedImageSource} from './studio-import.mjs';
 import {hasUnsavedChanges} from './snapshot-policy.mjs';
 import {savedSessions} from './session-family.mjs';
 import {recoverExecutionDirectories} from './execution-cleanup.mjs';
+import {recoverPrivateCaches} from './private-cache.mjs';
 import {installDownloads} from './downloads.mjs';
 import {app,BrowserWindow,WebContentsView,ipcMain,powerMonitor,Menu,dialog} from 'electron';
 import fs from 'node:fs';
@@ -15,7 +16,6 @@ import {PrivateRuntime} from './runtime.mjs';
 import {PrivateImages} from './images.mjs';
 import {installTitlebar} from './titlebar.mjs';
 const root=path.dirname(fileURLToPath(import.meta.url)),entries=new Map();
-app.whenReady().then(()=>recoverExecutionDirectories()).catch(()=>console.error('Private execution recovery failed; incognito startup will retry cleanup.'));
 process.env.DSH_DESKTOP_ISOLATED_HOST='0';
 const activeKey=Symbol.for('dsh.incognito.active'),bridgeKey=Symbol.for('dsh.incognito.bridge');
 // DSH Private keeps the ordinary host disabled for its entire lifetime.
@@ -87,6 +87,8 @@ app.on('before-quit',event=>{
 });
 // The desktop shell calls this before it reveals any application content.
 globalThis[Symbol.for('dsh.privacy.prepareWindow')]=async(win,renderer)=>{
+  // The shell already owns the single-instance lock. Fail closed before the gate.
+  recoverPrivateCaches();recoverExecutionDirectories();
  for(let n=0;n<200&&!globalThis[bridgeKey];n++)await delay(100);
  if(!globalThis[bridgeKey])throw Error('DSH Private host did not become ready');
  await open(renderer);

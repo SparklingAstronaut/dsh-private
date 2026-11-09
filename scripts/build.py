@@ -6,9 +6,10 @@ import os
 from pathlib import Path
 import shutil
 import urllib.request
+from build_support import inputs, verify_upstream, tree_files, source_state
 
 ROOT = Path(__file__).resolve().parents[1]
-NODE_VERSION = '24.15.0'
+NODE_VERSION = inputs()['node']['version']
 
 def long_path(value):
     value = str(Path(value).resolve())
@@ -23,6 +24,7 @@ def build(source, output):
     source, output = source.resolve(), output.resolve()
     if output.exists():
         raise SystemExit('Choose a new output directory; existing builds are never overwritten.')
+    upstream = verify_upstream(source)
     package = source / 'resources/app'
     metadata = json.loads((package / 'package.json').read_text(encoding='utf-8'))
     if metadata['version'] != '2.0.14-beta.1':
@@ -55,12 +57,9 @@ def build(source, output):
     shutil.copytree(ROOT / 'app', app, ignore=shutil.ignore_patterns('__pycache__', '*.pyc', 'runtime'))
     cache = ROOT / '.cache'
     node = cache / f'node-v{NODE_VERSION}.exe'
-    sums = cache / 'SHASUMS256.txt'
-    if not sums.exists():
-        download(f'https://nodejs.org/dist/v{NODE_VERSION}/SHASUMS256.txt', sums)
-    expected = next(line.split()[0] for line in sums.read_text().splitlines() if line.split()[-1] == 'win-x64/node.exe')
+    expected = inputs()['node']['sha256']
     if not node.exists():
-        download(f'https://nodejs.org/dist/v{NODE_VERSION}/win-x64/node.exe', node)
+        download(inputs()['node']['url'], node)
     if hashlib.sha256(node.read_bytes()).hexdigest() != expected:
         raise SystemExit('Node executable checksum mismatch.')
     (app / 'runtime').mkdir()
@@ -68,6 +67,8 @@ def build(source, output):
     node_license = cache / 'NODE-LICENSE.txt'
     if not node_license.exists():
         download(f'https://raw.githubusercontent.com/nodejs/node/v{NODE_VERSION}/LICENSE', node_license)
+    if hashlib.sha256(node_license.read_bytes()).hexdigest() != inputs()['node']['licenseSha256']:
+        raise SystemExit('Node license checksum mismatch.')
     shutil.copy2(node_license, app / 'runtime/LICENSE.txt')
     for name in ['app-icon.png', 'tray-icon-blue.png']:
         shutil.copy2(ROOT / 'app/assets/app.png', target / 'build' / name)
@@ -78,12 +79,17 @@ def build(source, output):
         shutil.copy2(ROOT / name, output / name)
     shutil.copytree(ROOT / 'licenses', output / 'licenses')
     shutil.copytree(ROOT / 'docs', output / 'docs')
-    (output / 'BUILD.json').write_text(json.dumps({'product': 'DSH Private', 'version': '0.1.0-preview.2', 'desktop': metadata['version'], 'node': NODE_VERSION, 'nodeSha256': expected}, indent=2), encoding='utf-8')
+    version = json.loads((ROOT / 'package.json').read_text(encoding='utf-8'))['version']
+    manifest = {'product': 'DSH Private', 'version': version, 'desktop': metadata['version'], 'node': NODE_VERSION, 'nodeSha256': expected, 'upstream': upstream, 'source': source_state(), 'files': tree_files(output)}
+    (output / 'BUILD.json').write_text(json.dumps(manifest, indent=2, sort_keys=True)+'\n', encoding='utf-8')
     print('Built DSH Private portable distribution.')
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--desktop-source', required=True, type=Path)
+    parser.add_argument('--desktop-source', type=Path)
     parser.add_argument('--output', type=Path, default=ROOT / 'dist/DSH-Private')
     args = parser.parse_args()
+    if args.desktop_source is None:
+        from fetch_upstream import fetch
+        args.desktop_source = fetch()
     build(args.desktop_source, args.output)

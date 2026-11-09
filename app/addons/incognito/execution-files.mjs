@@ -1,5 +1,5 @@
 import {resolvePrivatePath} from '../../portable-paths.mjs';
-import {executionReference} from './execution-reference.mjs';
+import {executionReference,readExecutionReference} from './execution-reference.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import {createHash} from 'node:crypto';
@@ -19,7 +19,7 @@ export class ExecutionFiles{
   const s=this.session(id);const mappings=[];let bytes=0;
   // Validate the entire batch before creating any copies.
   const batch=Object.values(files).map(f=>{const external=f.externalPath?executionReference(f):undefined;const data=f.deleted||external?Buffer.alloc(0):Buffer.from(f.data,'base64');bytes+=data.length;if(bytes>128*1024*1024)throw Error('Execution inputs exceed 128 MB');const target=this.mapped(s,f.path);this.safe(target);return {source:path.resolve(f.path),target,data,external,deleted:!!f.deleted,digest:f.deleted?'deleted':external?'external:'+key(external):hash(data)};});
-  for(const f of batch){const previous=s.files.get(key(f.source));if(f.deleted&&fs.existsSync(f.target)){if(!fs.lstatSync(f.target).isFile())throw Error("Deleted execution input is not a regular file");fs.unlinkSync(f.target);}if(!f.deleted&&previous?.digest!==f.digest){fs.mkdirSync(path.dirname(f.target),{recursive:true});if(f.external){if(key(f.external)!==key(f.target))fs.copyFileSync(f.external,f.target);}else fs.writeFileSync(f.target,f.data);}s.files.set(key(f.source),{...f,data:undefined});mappings.push({source:f.source,path:f.target});}
+  for(const f of batch){const previous=s.files.get(key(f.source));if(f.deleted&&fs.existsSync(f.target)){if(!fs.lstatSync(f.target).isFile())throw Error("Deleted execution input is not a regular file");fs.unlinkSync(f.target);}if(!f.deleted&&previous?.digest!==f.digest){fs.mkdirSync(path.dirname(f.target),{recursive:true});if(f.external){if(key(f.external)!==key(f.target))fs.writeFileSync(f.target,readExecutionReference({externalPath:f.external}));}else fs.writeFileSync(f.target,f.data);}s.files.set(key(f.source),{...f,data:undefined});mappings.push({source:f.source,path:f.target});}
   const relocate=key(workdir)===key(defaultWorkspace)||batch.some(f=>inside(workdir,f.source));
   const cwd=relocate?this.mapped(s,workdir):path.resolve(workdir);
   if(relocate){this.safe(cwd);fs.mkdirSync(cwd,{recursive:true});}

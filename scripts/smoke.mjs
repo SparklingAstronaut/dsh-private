@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import {pathToFileURL} from 'node:url';
 import {randomBytes} from 'node:crypto';
 const build=path.resolve(process.argv[2]||'dist/DSH-Private');
-const root=fs.mkdtempSync(path.join(os.tmpdir(),'dsh-private-smoke-'));
+const root=fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(),'dsh-private-smoke-')));
 const app=path.join(build,'resources/private/app');
 let calls=0;
 const server=http.createServer(async(req,res)=>{
@@ -38,6 +38,39 @@ const backend=new Backend({root:path.join(root,'vault'),bridge:()=>bridge});
 const password=randomBytes(24).toString('base64url');
 let runtime;
 try{
+ // Exercise the packaged filesystem and MCP adapters, not just the cache helper.
+ const {spillRow,purgeAll}=await importApp('addons/incognito/private-cache.mjs');
+ const {scope,canonical}=await importApp('addons/incognito/private-data.mjs');
+ const {moduleOf}=await importApp('addons/incognito/imports.mjs');
+ const {Context}=await moduleOf('@deepseek-ai/cordis');
+ const {default:MemoryFs}=await importApp('addons/incognito/memory-fs.mjs');
+ const {ExecutionFiles}=await importApp('addons/incognito/execution-files.mjs');
+ const {PrivateMcp}=await importApp('addons/incognito/mcp-broker.mjs');
+ const filePath=path.join(root,'empty-home','synthetic-large.txt');
+ const bytes=Buffer.from('SYNTHETIC_LARGE_CACHE_CONTENT\n'.repeat(50000));
+ const cached=spillRow('synthetic-cache',{header:{id:'synthetic-cache'},files:{[canonical(filePath)]:{path:filePath,data:bytes.toString('base64')}}});
+ const reference=cached.files[canonical(filePath)];
+ assert(!fs.readFileSync(reference.externalPath).includes('SYNTHETIC_LARGE_CACHE_CONTENT'));
+ const context=new Context(),memory=new MemoryFs(context);
+ globalThis.privateSessions={rows:new Map([['synthetic-cache',cached]])};
+ try{await scope.run('synthetic-cache',async()=>{
+  const target=await memory.resolve(filePath);
+  assert.equal(canonical(target.targetKey),canonical(filePath),'Synthetic virtual file and resolved target must share a canonical key');
+  assert.equal((await memory.stat(target)).size,bytes.length);
+  assert((await memory.readBytes(target)).equals(bytes));
+  assert.equal(await memory.readText(target),bytes.toString());
+  assert((await memory.readByteRange(target,{offset:7,length:23})).equals(bytes.subarray(7,30)));
+  await assert.rejects(memory.readBytes(target,undefined,100));
+ });}finally{await context.fiber.dispose();delete globalThis.privateSessions;}
+ const copies=new ExecutionFiles(path.join(root,'private/Executions/synthetic/files'));
+ const prepared=copies.prepare('synthetic-cache',path.join(root,'empty-home'),cached.files);
+ const mapping=JSON.parse(prepared.dshEnv.DSH_PRIVATE_FILES)[0];assert(fs.readFileSync(mapping.path).equals(bytes));
+ const mcp=new PrivateMcp(),restored=[];
+ const pair={client:{callTool:async request=>{restored.push(...request.arguments.files);return {structuredContent:{ok:true}};}}};
+ await mcp.seed(pair,{inside:()=>true,files:[reference]});assert.equal(restored[0].data,bytes.toString('base64'));
+ const spilled=await mcp.spillFile('synthetic-mcp',{path:filePath,data:bytes.toString('base64')},bytes);
+ assert(!fs.readFileSync(spilled.externalPath).includes('SYNTHETIC_LARGE_CACHE_CONTENT'));
+ purgeAll();
  await backend.vault.initialize(password);await backend.action('unlock',{password});
  const id=backend.vault.create('Heretic');await backend.send(id,'Synthetic check: 37 * 19');
  for(let i=0;i<100&&backend.pending.size;i++)await new Promise(r=>setTimeout(r,50));
@@ -101,8 +134,8 @@ try{
  await runtime.save(created.sessionId);
  assert.equal(hasUnsavedChanges((await runtime.call('snapshot')).sessions,savedRows()),false,'Explicitly saving must clear the warning');
  await runtime.stop();runtime=null;backend.lock();
- console.log('PASS portable runtime, authenticated UI, chat, encrypted readback, clean reopen, genuine unsaved changes, explicit save, and shutdown.');
+ console.log('PASS encrypted cache, filesystem/MCP/execution adapters, portable runtime, authenticated UI, chat, encrypted readback, clean reopen, genuine unsaved changes, explicit save, and shutdown.');
 }finally{
  await runtime?.stop().catch(()=>{});backend.lock();server.closeAllConnections();await new Promise(r=>server.close(r));
- assert.equal(path.dirname(root),os.tmpdir());assert(path.basename(root).startsWith('dsh-private-smoke-'));fs.rmSync(root,{recursive:true});
+ assert.equal(path.dirname(root),fs.realpathSync.native(os.tmpdir()));assert(path.basename(root).startsWith('dsh-private-smoke-'));fs.rmSync(root,{recursive:true});
 }
