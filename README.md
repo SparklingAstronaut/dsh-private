@@ -6,13 +6,15 @@ A Windows desktop app for temporary local AI conversations and explicitly saved,
 
 ## Download and start
 
-1. Download `DSH-Private-0.1.0-preview.1-windows-x64.zip` from [Releases](https://github.com/SparklingAstronaut/dsh-private/releases).
+1. Download `DSH-Private-0.1.0-preview.2-windows-x64.zip` from [Releases](https://github.com/SparklingAstronaut/dsh-private/releases).
 2. Extract the **entire** archive to a writable local folder. Run `DSH Private.exe`. Windows 10/11 x64 is required. This preview is not code-signed.
 3. Start your own local OpenAI-compatible model server. In **Connection**, enter its loopback API URL (for example `http://127.0.0.1:1234/v1`), detect or enter its model ID, and save/restart. Model B is optional. No model weights or model server are included.
 4. Generate a vault password, keep it somewhere safe, then unlock. There is no password recovery.
 5. Conversations are temporary by default. Use the private chat menu to save an encrypted snapshot. Closing the app discards unsaved changes after confirmation.
 
 Some advanced privacy and Studio dialogs currently use Chinese labels; core chat and setup support English.
+
+Preview 2 fixes a false unsaved-content warning when reopening text-only archives. Existing encrypted archives remain compatible.
 
 ## What is included
 

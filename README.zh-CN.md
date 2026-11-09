@@ -2,6 +2,8 @@
 
 用于临时本地 AI 聊天和密码加密存档的 Windows 应用。**社区预览版，不是 DeepSeek 或 DSH Desktop 官方发行版。**
 
+Preview 2 修复了重开纯文字存档后误提示未保存的问题，保留原有加密存档格式。
+
 ## 开始使用
 
 1. 从 [Releases](https://github.com/SparklingAstronaut/dsh-private/releases) 下载 Windows x64 ZIP，完整解压，再打开 `DSH Private.exe`。适用于 Windows 10/11 x64；当前预览版没有代码签名。

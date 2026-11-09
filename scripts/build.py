@@ -78,7 +78,7 @@ def build(source, output):
         shutil.copy2(ROOT / name, output / name)
     shutil.copytree(ROOT / 'licenses', output / 'licenses')
     shutil.copytree(ROOT / 'docs', output / 'docs')
-    (output / 'BUILD.json').write_text(json.dumps({'product': 'DSH Private', 'version': '0.1.0-preview.1', 'desktop': metadata['version'], 'node': NODE_VERSION, 'nodeSha256': expected}, indent=2), encoding='utf-8')
+    (output / 'BUILD.json').write_text(json.dumps({'product': 'DSH Private', 'version': '0.1.0-preview.2', 'desktop': metadata['version'], 'node': NODE_VERSION, 'nodeSha256': expected}, indent=2), encoding='utf-8')
     print('Built DSH Private portable distribution.')
 
 if __name__ == '__main__':

@@ -30,6 +30,8 @@ for(const rel of fs.readdirSync(presets,{recursive:true})){const from=path.join(
 const importApp=rel=>import(pathToFileURL(path.join(app,rel)).href);
 const {Backend}=await importApp('addons/incognito/backend.mjs');
 const {PrivateRuntime}=await importApp('addons/incognito/runtime.mjs');
+const {hasUnsavedChanges}=await importApp('addons/incognito/snapshot-policy.mjs');
+const {savedSessions}=await importApp('addons/incognito/session-family.mjs');
 const provider={displayName:'Synthetic local model',api:'openai-completions',apiKeyEnv:'QQZ_LOCAL_API_KEY',baseURL:baseUrl,compat:{supportsStore:false,supportsDeveloperRole:false,supportsReasoningEffort:false,maxTokensField:'max_tokens'},models:[{id:'synthetic-model',name:'synthetic-model',contextWindow:32768,maxTokens:4096,input:['text']}]};
 const bridge={status:()=>({model:'Heretic',status:'ready'}),select:async()=>{},activity(){},stop:async()=>{},privateSettings:()=>({'llm-pi-ai':{providers:{'qqz-kvmem':provider}},'locale':{preference:'en'}}),privateExecutionConfig:()=>({config:{cwd:root}})};
 const backend=new Backend({root:path.join(root,'vault'),bridge:()=>bridge});
@@ -47,15 +49,19 @@ try{
  assert((await runtime.call('model-catalog')).some(m=>m.id==='synthetic-model'));
  assert.equal((await fetch(runtime.origin)).status,403);
  let cookie='';
- let response=await fetch(runtime.url,{headers:{'X-DSH-Private':runtime.token},redirect:'manual'});
- if(response.status>=300&&response.status<400){
-  cookie=response.headers.getSetCookie().map(c=>c.split(';')[0]).join('; ');
-  response=await fetch(new URL(response.headers.get('location'),runtime.url),{headers:{'X-DSH-Private':runtime.token,Cookie:cookie}});
- }
- assert.equal(response.status,200);
- const html=await response.text();
- assert(html.includes('<html'));
- assert(html.includes('dsh-incognito-client'),'Private chat controls must be included in the browser boot graph');
+ const authenticate=async()=>{
+  cookie='';
+  let response=await fetch(runtime.url,{headers:{'X-DSH-Private':runtime.token},redirect:'manual'});
+  if(response.status>=300&&response.status<400){
+   cookie=response.headers.getSetCookie().map(c=>c.split(';')[0]).join('; ');
+   response=await fetch(new URL(response.headers.get('location'),runtime.url),{headers:{'X-DSH-Private':runtime.token,Cookie:cookie}});
+  }
+  assert.equal(response.status,200);
+  const html=await response.text();
+  assert(html.includes('<html'));
+  assert(html.includes('dsh-incognito-client'),'Private chat controls must be included in the browser boot graph');
+ };
+ await authenticate();
  const rpc=async(method,args)=>{
   const response=await fetch(runtime.origin+'/api/'+method,{method:'POST',headers:{'X-DSH-Private':runtime.token,Cookie:cookie,'Content-Type':'application/json'},body:JSON.stringify({type:'client-request',rpcId:'smoke-'+method,method,payload:{args}})});
   const envelope=await response.json();assert.equal(envelope.result?.ok,true,JSON.stringify(envelope));return envelope.result.value;
@@ -70,8 +76,32 @@ try{
  const savedSession=fs.readFileSync(backend.vault.file);assert(!savedSession.includes('Synthetic check'));
  await runtime.stop();runtime=null;backend.lock();assert.equal(backend.vault.key,null);
  assert(fs.readFileSync(backend.vault.file).equals(savedSession));
- await backend.action('unlock',{password});assert(backend.vault.snapshot().some(row=>row.runtime?.header.id===created.sessionId&&JSON.stringify(row.runtime.events).includes('703')));backend.lock();
- console.log('PASS portable runtime boot, authenticated UI route, mock local chat, encrypted readback, and shutdown.');
+ await backend.action('unlock',{password});assert(backend.vault.snapshot().some(row=>row.runtime?.header.id===created.sessionId&&JSON.stringify(row.runtime.events).includes('703')));
+ runtime=new PrivateRuntime(backend);await runtime.start();await authenticate();
+ const savedRows=()=>savedSessions(backend.vault.snapshot().filter(row=>row.saved));
+ // The desktop opens a blank session before the user selects a saved chat.
+ await rpc('session/create',{request:{workspaceId:workspaces.workspace.workspaceId,agentPreset:'standard'}});
+ snapshot=await runtime.call('snapshot');
+ const reopened=snapshot.sessions.find(row=>row.header.id===created.sessionId);
+ const page=await rpc('session/page',{request:{address:{kind:'session',sessionId:created.sessionId},throughSeq:reopened.events.at(-1).seq,maxMessages:10}});
+ assert(JSON.stringify(page).includes('703'),'Saved messages must remain readable after a full restart');
+ await rpc('session/projections',{request:{sessionId:created.sessionId}});
+ // Adopt the existing session to exercise the same restoration performed by
+ // the desktop's live history subscription, without adding a user message.
+ await rpc('session/create',{request:{sessionId:created.sessionId,cwd:reopened.header.cwd,agentPreset:'standard'}});
+ snapshot=await runtime.call('snapshot');
+ assert.equal(snapshot.sessions.find(row=>row.header.id===created.sessionId).events.at(-1)?.type,'session/end-seed','Exercise completed desktop-style session activation');
+ assert.equal(hasUnsavedChanges(snapshot.sessions,savedRows()),false,'Reopening and reading a saved chat must not mark it unsaved');
+ assert(fs.readFileSync(backend.vault.file).equals(savedSession),'Read-only reopening must not rewrite the archive');
+ await rpc('session/prompt',{request:{sessionId:created.sessionId,requestId:'synthetic-followup',mode:'queue',content:[{type:'text',text:'Synthetic unsaved follow-up'}]}});
+ for(let i=0;i<100;i++){await new Promise(r=>setTimeout(r,100));snapshot=await runtime.call('snapshot');if(snapshot.sessions.find(row=>row.header.id===created.sessionId).events.filter(e=>e.type==='turn/end').length>=2)break;}
+ assert.equal(snapshot.sessions.find(row=>row.header.id===created.sessionId).events.filter(e=>e.type==='turn/end').length,2);
+ assert.equal(hasUnsavedChanges(snapshot.sessions,savedRows()),true,'A genuinely new message must still require saving');
+ assert(fs.readFileSync(backend.vault.file).equals(savedSession),'Unsaved messages must not overwrite the saved archive');
+ await runtime.save(created.sessionId);
+ assert.equal(hasUnsavedChanges((await runtime.call('snapshot')).sessions,savedRows()),false,'Explicitly saving must clear the warning');
+ await runtime.stop();runtime=null;backend.lock();
+ console.log('PASS portable runtime, authenticated UI, chat, encrypted readback, clean reopen, genuine unsaved changes, explicit save, and shutdown.');
 }finally{
  await runtime?.stop().catch(()=>{});backend.lock();server.closeAllConnections();await new Promise(r=>server.close(r));
  assert.equal(path.dirname(root),os.tmpdir());assert(path.basename(root).startsWith('dsh-private-smoke-'));fs.rmSync(root,{recursive:true});

@@ -66,16 +66,52 @@ export function saveExplicitSnapshot(runtime, sessionId) {
   });
 }
 
+function comparableRow(row) {
+  // Projection caches and worker fingerprints are derived from the event log.
+  const copy = refifyRow(row);
+  delete copy.projection;
+  delete copy._fp;
+  copy.files ??= {};
+  // Activating a restored session appends this empty lifecycle marker.
+  // Inherited markers and every content/configuration event remain significant.
+  const last = copy.events.at(-1);
+  if (last?.type === 'session/end-seed' && isDeepStrictEqual(last.data, {})) copy.events.pop();
+  if (copy.workspaceState?.record) delete copy.workspaceState.record.updatedAt;
+  return copy;
+}
+
+function blankSession(row) {
+  const initialTypes = ['permission/preset', 'sandbox/mode', 'approval/policy'];
+  const initialOnly = row.events.length === 0 || (row.events.length === 3 &&
+    row.events.every((event, index) => event.type === initialTypes[index]));
+  return initialOnly && !(row.media?.length || row.attachments?.length) && Object.keys(row.files).length === 0;
+}
+
+function normalizeSessionOrder(rows, savedIds) {
+  // Unsaved blank tabs and missing unsaved neighbours change numeric slots.
+  // Preserve the relative order of saved chats, including actual user reorders.
+  const groups = new Map();
+  for (const row of rows) {
+    if (!savedIds.has(row.header.id) || !row.workspaceState) continue;
+    const id = row.workspaceState.workspaceId;
+    if (!groups.has(id)) groups.set(id, []);
+    groups.get(id).push(row);
+  }
+  for (const group of groups.values()) {
+    group.sort((a, b) => a.workspaceState.sessionOrder - b.workspaceState.sessionOrder);
+    group.forEach((row, index) => { row.workspaceState.sessionOrder = index; });
+  }
+}
+
 export function hasUnsavedChanges(rows, savedRows) {
+  rows = rows.map(comparableRow);
+  savedRows = savedRows.map(comparableRow);
   const saved = new Map(savedRows.map(row => [row.header.id, row]));
+  normalizeSessionOrder(rows, saved);
+  normalizeSessionOrder(savedRows, saved);
   return rows.some(row => {
     const before = saved.get(row.header.id);
-    if (!before) return row.events.length > 0 || (row.media?.length || 0) > 0 || Object.keys(row.files || {}).length > 0;
-    // Length-based worker fingerprints miss edits of existing messages/files.
-    // Normalize inline versus spilled file representation without reading disk.
-    const current = refifyRow(row), previous = refifyRow(before);
-    delete current._fp;
-    delete previous._fp;
-    return !isDeepStrictEqual(current, previous);
+    if (!before) return !blankSession(row);
+    return !isDeepStrictEqual(row, before);
   });
 }
