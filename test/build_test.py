@@ -11,6 +11,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 from build_support import tree_files, tree_digest, verify_upstream
 from verify_build import verify
 from scan_release import scan
+import pe_version_info
 
 
 class BuildTests(unittest.TestCase):
@@ -64,6 +65,44 @@ class BuildTests(unittest.TestCase):
             (root / "app" / "venv" / "pyvenv.cfg").write_text("home = synthetic")
             labels = sorted(label for _, label in scan(root, [])[1])
             self.assertEqual(labels, ["data/cache file", "data/cache file", "virtual environment file"])
+
+    def test_version_info_round_trips_and_renames_only_product_fields(self):
+        def text(key, value):
+            return {"key": key, "type": 1, "value": (value + "\0").encode("utf-16-le"), "children": []}
+
+        fixed = bytearray(52)
+        fixed[:4] = (0xFEEF04BD).to_bytes(4, "little")
+        table = {
+            "key": "040904b0",
+            "type": 1,
+            "value": b"",
+            "children": [text("ProductName", "Upstream Beta"), text("SquirrelAwareVersion", "1")],
+        }
+        translation = {"key": "Translation", "type": 0, "value": bytes.fromhex("0904b004"), "children": []}
+        root = {
+            "key": "VS_VERSION_INFO",
+            "type": 0,
+            "value": bytes(fixed),
+            "children": [
+                {"key": "StringFileInfo", "type": 1, "value": b"", "children": [table]},
+                {"key": "VarFileInfo", "type": 1, "value": b"", "children": [translation]},
+            ],
+        }
+        original = pe_version_info.build(root)
+        self.assertEqual(pe_version_info.build(pe_version_info.parse(original)), original)
+        renamed = pe_version_info.parse(
+            pe_version_info.rebrand(original, "DSH Private", "0.1.0-preview.3", "DSH Private contributors")
+        )
+        values = pe_version_info.strings(renamed)["040904b0"]
+        self.assertEqual(values["ProductName"], "DSH Private")
+        self.assertEqual(values["FileVersion"], "0.1.0-preview.3")
+        self.assertEqual(values["SquirrelAwareVersion"], "1")
+        self.assertEqual(int.from_bytes(renamed["value"][8:12], "little"), 1)
+        self.assertEqual(int.from_bytes(renamed["value"][12:16], "little"), 3)
+        self.assertEqual(renamed["children"][1]["children"][0]["value"], bytes.fromhex("0904b004"))
+        self.assertEqual(pe_version_info.numeric_version("1.2.3"), (1, 2, 3, 0))
+        with self.assertRaises(ValueError):
+            pe_version_info.numeric_version("latest")
 
 
 if __name__ == "__main__":

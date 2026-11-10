@@ -84,14 +84,15 @@ def build(source, output):
     for name in ["app-icon.png", "tray-icon-blue.png"]:
         shutil.copy2(ROOT / "app/assets/app.png", target / "build" / name)
     shutil.copy2(ROOT / "app/assets/app.ico", target / "build/app-icon.ico")
-    from pe_icon_resources import replace_icons
+    from pe_icon_resources import replace_icons, replace_version_info
 
+    version = json.loads((ROOT / "package.json").read_text(encoding="utf-8"))["version"]
     replace_icons(output / "DSH Private.exe", ROOT / "app/assets/app.ico")
+    replace_version_info(output / "DSH Private.exe", "DSH Private", version, "DSH Private contributors")
     for name in ["README.md", "README.zh-CN.md", "LICENSE", "NOTICE.md", "SECURITY.md"]:
         shutil.copy2(ROOT / name, output / name)
     shutil.copytree(ROOT / "licenses", output / "licenses")
     shutil.copytree(ROOT / "docs", output / "docs")
-    version = json.loads((ROOT / "package.json").read_text(encoding="utf-8"))["version"]
     manifest = {
         "product": "DSH Private",
         "version": version,

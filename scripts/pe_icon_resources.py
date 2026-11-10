@@ -1,9 +1,10 @@
-"""Read PE resources without executing the image; replace only icon resources."""
+"""Read PE resources without executing the image; replace only icon and version resources."""
 
 import ctypes
 from ctypes import wintypes as w
 import hashlib, struct
 from pathlib import Path
+from pe_version_info import parse as parse_version, rebrand, strings as version_strings
 
 k = ctypes.WinDLL("kernel32", use_last_error=True)
 ptr = ctypes.c_void_p
@@ -218,3 +219,40 @@ def replace_icons(staged_file, icon_file):
         "nonResourceSectionContentsUnchanged": True,
         "relocationDirectoryValidated": True,
     }
+
+
+def replace_version_info(staged_file, product, version, company):
+    """Rename the product in RT_VERSION; every other resource and section must stay identical."""
+    before = read_resources(staged_file)
+    code = pe_code_snapshot(staged_file)
+    keys = [key for key in before if key[0] == 16]
+    assert len(keys) == 1, "Expected exactly one version resource"
+    key = keys[0]
+    data = rebrand(before[key], product, version, company)
+    update = checked(k.BeginUpdateResourceW(str(Path(staged_file).resolve()), False))
+    committed = False
+    try:
+        buffer = ctypes.create_string_buffer(data)
+        checked(
+            k.UpdateResourceW(
+                update,
+                resource_pointer(key[0]),
+                resource_pointer(key[1]),
+                key[2],
+                ctypes.cast(buffer, ptr),
+                len(data),
+            )
+        )
+        checked(k.EndUpdateResourceW(update, False))
+        committed = True
+    finally:
+        if not committed:
+            k.EndUpdateResourceW(update, True)
+    after = read_resources(staged_file)
+    unchanged = lambda resources: {name: value for name, value in resources.items() if name != key}
+    assert unchanged(before) == unchanged(after), "Non-version resources changed"
+    assert after[key] == data, "Embedded version resource differs from the rebuilt copy"
+    assert pe_code_snapshot(staged_file) == code, "Code or non-resource PE sections changed"
+    table = next(iter(version_strings(parse_version(after[key])).values()))
+    assert table["ProductName"] == product and table["ProductVersion"] == version
+    return {"productName": product, "productVersion": version, "otherResourcesUnchanged": True}
