@@ -2,7 +2,7 @@
 
 The password gate's Connection panel sets `baseUrl`, `modelA`, `modelB`, and `locale` (`en-US` or `zh-CN`). Model IDs must exactly match `/models` from the user's running local server. Model A and B may use the same ID. Internally the slots are `model-a` and `model-b`; archives written by Preview 1–3 used the names Heretic and QQZ and are read as Model A and Model B. The underlying model IDs are user-configured.
 
-Advanced settings live in `%APPDATA%\DSH-Private\settings.json`. Close the app before manual editing. `vision: true` advertises image input only if your selected local model supports it. `contextWindow` (default 32768) and `maxTokens` (default 4096) should match what your local server allows. Do not store credentials here; the built-in chat connector requires no remote API keys.
+Advanced settings live in `%APPDATA%\DSH-Private\settings.json`. Close the app before manual editing. `vision: true` advertises image input only if your selected local model supports it. `contextWindow` (default 32768) and `maxTokens` (default 4096) should match what your local server allows. `disableGpu: true` turns off the app's own graphics acceleration, so its window uses no video memory that your local model or image jobs need. Do not store credentials here; the built-in chat connector requires no remote API keys.
 
 Optional integrations are retained as source but not automatically configured in this preview:
 

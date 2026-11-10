@@ -41,6 +41,8 @@ process.env.TEMP = path.join(data, "temp");
 process.env.TMP = process.env.TEMP;
 process.chdir(path.join(data, "workspace"));
 app.setName("DSH Private");
+// Chromium's GPU process uses video memory that a local model or image job may need.
+if (config.disableGpu === true) app.disableHardwareAcceleration();
 app.setPath("userData", path.join(data, "electron"));
 app.setPath("logs", path.join(data, "logs"));
 const { privateModelSettings, hostPlugins } = await import("./model-config.mjs");
