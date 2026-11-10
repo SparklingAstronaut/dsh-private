@@ -11,16 +11,16 @@
 
 <p align="center">
   <a href="https://github.com/SparklingAstronaut/dsh-private/actions/workflows/verify.yml"><img src="https://github.com/SparklingAstronaut/dsh-private/actions/workflows/verify.yml/badge.svg" alt="Windows build verification"></a>
-  <a href="https://github.com/SparklingAstronaut/dsh-private/releases/tag/v0.1.0-preview.5"><img src="https://img.shields.io/badge/release-Preview%205-8b9fbb?style=flat-square" alt="Preview 5"></a>
+  <a href="https://github.com/SparklingAstronaut/dsh-private/releases/tag/v0.1.0-preview.6"><img src="https://img.shields.io/badge/release-Preview%206-8b9fbb?style=flat-square" alt="Preview 6"></a>
   <img src="https://img.shields.io/badge/Windows-10%20%2F%2011%20%C2%B7%20x64-536782?style=flat-square" alt="Windows 10 / 11 x64">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-607d73?style=flat-square" alt="MIT License"></a>
 </p>
 
-<h3 align="center"><a href="https://github.com/SparklingAstronaut/dsh-private/releases/download/v0.1.0-preview.5/DSH-Private-0.1.0-preview.5-windows-x64.zip">Download for Windows ↗</a></h3>
+<h3 align="center"><a href="https://github.com/SparklingAstronaut/dsh-private/releases/download/v0.1.0-preview.6/DSH-Private-0.1.0-preview.6-windows-x64.zip">Download for Windows ↗</a></h3>
 
 <p align="center">
-  <a href="https://github.com/SparklingAstronaut/dsh-private/releases/tag/v0.1.0-preview.5">Release notes</a> ·
-  <a href="https://github.com/SparklingAstronaut/dsh-private/releases/download/v0.1.0-preview.5/SHA256SUMS.txt">SHA-256 checksums</a> ·
+  <a href="https://github.com/SparklingAstronaut/dsh-private/releases/tag/v0.1.0-preview.6">Release notes</a> ·
+  <a href="https://github.com/SparklingAstronaut/dsh-private/releases/download/v0.1.0-preview.6/SHA256SUMS.txt">SHA-256 checksums</a> ·
   <a href="docs/configuration.md">Configuration</a> ·
   <a href="README.zh-CN.md">简体中文</a>
 </p>
@@ -65,7 +65,7 @@ Open the app, unlock, and talk to your own local model. Conversations are tempor
 
 Core chat and setup support English. Some advanced privacy and Studio dialogs currently use Chinese labels.
 
-**New in Preview 5:** DSH Private now ships only the private-mode core. Plugins take part in private mode through documented services: an image plugin supplies its own workflow catalog to the private image window, a plugin can manage your local models, and private tools run from your own adapters inside the in-memory sandbox. Prompt skills load from your data folder, encrypted archives can live on another drive (`privateRoot`), private chats can reuse a local model already set up in DSH (`provider`), and `disableGpu` keeps the app's window off video memory. The document reader opens chat attachments again. [View release →](https://github.com/SparklingAstronaut/dsh-private/releases/tag/v0.1.0-preview.5)
+**New in Preview 6:** saving and deleting a chat now live in DSH's own chat menu, the **⋯** beside each chat in the sidebar, instead of a separate button above the chat. **Ctrl+S** saves the open chat, and deleting asks for confirmation inside the app. The private-mode plugin services and settings introduced in Preview 5 are unchanged. [View release →](https://github.com/SparklingAstronaut/dsh-private/releases/tag/v0.1.0-preview.6)
 
 <details>
 <summary><strong>Optional: plugins, prompt skills, tools, and images</strong></summary>

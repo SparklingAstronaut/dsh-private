@@ -11,16 +11,16 @@
 
 <p align="center">
   <a href="https://github.com/SparklingAstronaut/dsh-private/actions/workflows/verify.yml"><img src="https://github.com/SparklingAstronaut/dsh-private/actions/workflows/verify.yml/badge.svg" alt="Windows build verification"></a>
-  <a href="https://github.com/SparklingAstronaut/dsh-private/releases/tag/v0.1.0-preview.5"><img src="https://img.shields.io/badge/release-Preview%205-8b9fbb?style=flat-square" alt="Preview 5"></a>
+  <a href="https://github.com/SparklingAstronaut/dsh-private/releases/tag/v0.1.0-preview.6"><img src="https://img.shields.io/badge/release-Preview%206-8b9fbb?style=flat-square" alt="Preview 6"></a>
   <img src="https://img.shields.io/badge/Windows-10%20%2F%2011%20%C2%B7%20x64-536782?style=flat-square" alt="Windows 10 / 11 x64">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-607d73?style=flat-square" alt="MIT 许可证"></a>
 </p>
 
-<h3 align="center"><a href="https://github.com/SparklingAstronaut/dsh-private/releases/download/v0.1.0-preview.5/DSH-Private-0.1.0-preview.5-windows-x64.zip">下载 Windows 版 ↗</a></h3>
+<h3 align="center"><a href="https://github.com/SparklingAstronaut/dsh-private/releases/download/v0.1.0-preview.6/DSH-Private-0.1.0-preview.6-windows-x64.zip">下载 Windows 版 ↗</a></h3>
 
 <p align="center">
-  <a href="https://github.com/SparklingAstronaut/dsh-private/releases/tag/v0.1.0-preview.5">更新说明</a> ·
-  <a href="https://github.com/SparklingAstronaut/dsh-private/releases/download/v0.1.0-preview.5/SHA256SUMS.txt">SHA-256 校验值</a> ·
+  <a href="https://github.com/SparklingAstronaut/dsh-private/releases/tag/v0.1.0-preview.6">更新说明</a> ·
+  <a href="https://github.com/SparklingAstronaut/dsh-private/releases/download/v0.1.0-preview.6/SHA256SUMS.txt">SHA-256 校验值</a> ·
   <a href="docs/configuration.md">配置说明</a> ·
   <a href="README.md">English</a>
 </p>
@@ -65,7 +65,7 @@
 
 核心聊天和初始设置支持英文，部分高级隐私及 Studio 对话框目前使用中文标签。
 
-**Preview 5 更新：** DSH Private 现在只包含无痕模式本体，插件通过公开的接口参与无痕模式：生图插件自己向无痕图片工作台提供工作流目录，插件可以接管本地模型的启动和切换，无痕工具由你自己的适配器在内存沙箱中运行。提示词技能从数据目录读取；加密存档可以放在其他硬盘（`privateRoot`）；无痕聊天可以复用 DSH 里已配置的本地模型（`provider`）；`disableGpu` 让应用窗口不占用显存。文档读取工具重新可以读取聊天附件。[查看此版本 →](https://github.com/SparklingAstronaut/dsh-private/releases/tag/v0.1.0-preview.5)
+**Preview 6 更新：** 保存和删除聊天改到 DSH 自带的聊天菜单里，也就是左侧列表中每个聊天旁边的 **⋯**，不再使用聊天上方单独的按钮。按 **Ctrl+S** 可保存当前聊天，删除前会在应用内确认。Preview 5 加入的无痕插件接口和设置保持不变。[查看此版本 →](https://github.com/SparklingAstronaut/dsh-private/releases/tag/v0.1.0-preview.6)
 
 <details>
 <summary><strong>可选功能：插件、提示词、工具与生图</strong></summary>
