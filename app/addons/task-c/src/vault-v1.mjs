@@ -5,6 +5,7 @@
 import crypto from "node:crypto";
 import { promisify } from "node:util";
 import { realFs, err } from "./fsport.mjs";
+import { normalizeModelSlot } from "../../../model-slots.mjs";
 
 const scrypt = promisify(crypto.scrypt);
 const AAD_V1 = Buffer.from("DSH incognito vault v1", "utf8");
@@ -77,7 +78,7 @@ export class VaultV1Reader {
         }
         if (
           !/^[a-f0-9-]{36}$/.test(record.id) ||
-          !["Heretic", "QQZ"].includes(record.model) ||
+          !normalizeModelSlot(record.model) ||
           !Array.isArray(record.messages)
         ) {
           throw err("v1-corrupt", "聊天记录结构不符合 v1 规范");

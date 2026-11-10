@@ -1,4 +1,5 @@
 import { scope } from "./private-data.mjs";
+import { LOCAL_PROVIDER } from "../../model-slots.mjs";
 export const inject = ["tools", "llm", "systemPrompt"];
 export function apply(ctx) {
   ctx.systemPrompt.section({
@@ -15,7 +16,7 @@ export function apply(ctx) {
   ctx.on("llm/stream", (options, next) => {
     if (globalThis.privateDeleting) throw Error("Private session deletion in progress");
     if (globalThis.privateImageBusy) throw Error("请等待生图完成后再发送文字。");
-    if (options.provider !== "qqz-kvmem") throw Error("无痕模式只允许本地模型。");
+    if (options.provider !== LOCAL_PROVIDER) throw Error("无痕模式只允许本地模型。");
     return (async function* () {
       await globalThis.privateEnsureModel(options.model);
       if (globalThis.privateDeleting) throw Error("Private session deletion in progress");

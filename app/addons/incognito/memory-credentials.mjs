@@ -1,8 +1,9 @@
 import { moduleOf } from "./imports.mjs";
+import { LOCAL_API_KEY_ENV } from "../../model-slots.mjs";
 const { CredentialProvider } = await moduleOf("@deepseek-ai/dsh-credentials");
 export default class extends CredentialProvider {
   records = new Map();
-  values = new Map([["QQZ_LOCAL_API_KEY", "local-only"]]);
+  values = new Map([[LOCAL_API_KEY_ENV, "local-only"]]);
   async resolve(ref) {
     const value = this.values.get(ref);
     return value === undefined ? undefined : { value, source: "env" };

@@ -1,7 +1,8 @@
 import { localModelUrl, modelAliases } from "../../portable-paths.mjs";
+import { MODEL_A, MODEL_B } from "../../model-slots.mjs";
 import { Vault } from "./vault.mjs";
 import { randomBytes } from "node:crypto";
-export const models = { Heretic: modelAliases.Heretic, QQZ: modelAliases.QQZ };
+export const models = { [MODEL_A]: modelAliases[MODEL_A], [MODEL_B]: modelAliases[MODEL_B] };
 export class Backend {
   constructor({
     root,

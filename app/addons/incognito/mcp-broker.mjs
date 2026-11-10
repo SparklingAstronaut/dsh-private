@@ -1,5 +1,6 @@
 import { settings, appRoot as portableAppRoot, dataRoot } from "../../portable-paths.mjs";
 import { resolvePrivatePath } from "../../portable-paths.mjs";
+import { MODEL_A, MODEL_SLOTS } from "../../model-slots.mjs";
 import { stopMcpClients } from "./mcp-shutdown.mjs";
 import { executionReference, readExecutionReference } from "./execution-reference.mjs";
 import { purgeAll, purgeExcept, spillFile } from "./private-cache.mjs";
@@ -101,7 +102,7 @@ export class PrivateMcp {
   async catalog() {
     const all = [];
     for (const server of servers) {
-      const pair = await this.connect("catalog", server, "Heretic");
+      const pair = await this.connect("catalog", server, MODEL_A);
       try {
         for (const t of (await pair.client.listTools()).tools)
           if (!t.name.startsWith("_private_") && t.name !== "update_setting")
@@ -119,7 +120,7 @@ export class PrivateMcp {
   }
   async call({ sessionId, owner, server, name, args, files = [] }) {
     if (
-      !["Heretic", "QQZ"].includes(owner) ||
+      !MODEL_SLOTS.includes(owner) ||
       !servers.includes(server) ||
       name.startsWith("_private_") ||
       name === "update_setting"

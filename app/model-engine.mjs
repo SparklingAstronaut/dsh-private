@@ -1,4 +1,5 @@
 import { modelAliases, localModelUrl } from "./portable-paths.mjs";
+import { MODEL_A, MODEL_B } from "./model-slots.mjs";
 export const name = "private-local-model-connection";
 export function apply(ctx) {
   let state = { slot: "a", status: "stopped" };
@@ -7,7 +8,7 @@ export function apply(ctx) {
     isPrivate: () => true,
     activity() {},
     async selectPrivate(slot) {
-      const id = modelAliases[slot === "a" ? "Heretic" : "QQZ"];
+      const id = modelAliases[slot === "a" ? MODEL_A : MODEL_B];
       state = { slot, status: "starting" };
       try {
         const r = await fetch(localModelUrl("/models"), { signal: AbortSignal.timeout(10000) });

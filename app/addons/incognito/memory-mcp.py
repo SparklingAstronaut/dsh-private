@@ -9,7 +9,7 @@ import site
 
 site.addsitedir(str(BASE / "venv/Lib/site-packages"))
 OWNER = os.environ.get("PRIVATE_ART_OWNER")
-if OWNER not in ("Heretic", "QQZ"):
+if OWNER not in ("model-a", "model-b"):
     raise RuntimeError("Private model required")
 SERVER = sys.argv[1]
 # A held process handle avoids PID-reuse races and clears in-memory data if the desktop crashes.

@@ -103,7 +103,7 @@ test("saved large-file archives remain readable across cache key rotation and re
       password = "synthetic-archive-password";
     await vault.initialize(password);
     await vault.unlock(password);
-    const id = vault.create("Heretic"),
+    const id = vault.create("model-a"),
       saved = row();
     vault.get(id).runtime = inlineRow(spillRow(saved.header.id, structuredClone(saved)));
     vault.save(id);

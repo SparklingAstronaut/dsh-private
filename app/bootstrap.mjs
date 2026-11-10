@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { app } from "electron";
+import { LEGACY_SLOT_FOLDERS, LOCAL_API_KEY_ENV, LOCAL_PROVIDER } from "./model-slots.mjs";
 const root = fileURLToPath(new URL("./", import.meta.url));
 const data = path.resolve(
   process.env.DSH_PRIVATE_DATA_ROOT || path.join(app.getPath("appData"), "DSH-Private"),
@@ -15,11 +16,21 @@ process.env.DSH_PRIVATE_APP_ROOT = root;
 process.env.DSH_PRIVATE_DESKTOP_ROOT = path.resolve(root, "../../app");
 process.env.DSH_HOME = path.join(data, "host");
 process.env.DSH_TELEMETRY_DISABLED = "1";
-process.env.QQZ_LOCAL_API_KEY = "local-only";
+process.env[LOCAL_API_KEY_ENV] = "local-only";
 process.env.PYTHONDONTWRITEBYTECODE = "1";
 process.env.PYTHONPATH = path.join(root, "python");
 for (const name of ["host", "empty-home", "workspace", "temp", "private"])
   fs.mkdirSync(path.join(data, name), { recursive: true });
+// Preview 1-3 named the owner-specific private folders after the old model slots.
+for (const [legacy, slot] of LEGACY_SLOT_FOLDERS) {
+  const from = path.join(data, "private", legacy),
+    to = path.join(data, "private", slot);
+  try {
+    if (fs.existsSync(from) && !fs.existsSync(to)) fs.renameSync(from, to);
+  } catch {
+    // Leave the folder where it is; nothing is deleted.
+  }
+}
 process.env.TEMP = path.join(data, "temp");
 process.env.TMP = process.env.TEMP;
 process.chdir(path.join(data, "workspace"));
@@ -27,13 +38,13 @@ app.setName("DSH Private");
 app.setPath("userData", path.join(data, "electron"));
 app.setPath("logs", path.join(data, "logs"));
 const { privateModelSettings } = await import("./model-config.mjs");
-const provider = privateModelSettings()["llm-pi-ai"].providers["qqz-kvmem"];
+const provider = privateModelSettings()["llm-pi-ai"].providers[LOCAL_PROVIDER];
 const overlay = [
   {
     id: "desktop-shell",
     config: { port: 43219, networkExposure: "loopback", openBrowser: false, mode: "compatibility" },
   },
-  { id: "llm-pi-ai", config: { providers: { "qqz-kvmem": provider } } },
+  { id: "llm-pi-ai", config: { providers: { [LOCAL_PROVIDER]: provider } } },
   { id: "locale", config: privateModelSettings().locale },
   { id: "permission", config: { defaultPreset: "workspace-write" } },
   { id: "session-telemetry-otel", disabled: true },

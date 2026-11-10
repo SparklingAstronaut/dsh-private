@@ -1,5 +1,6 @@
 import { privateModelSettings } from "../../model-config.mjs";
 import { modelAliases, settings, resolvePrivatePath } from "../../portable-paths.mjs";
+import { MODEL_A, MODEL_B, normalizeModelSlot } from "../../model-slots.mjs";
 import { fileURLToPath } from "node:url";
 import { configurePrivateStudioAtStartup } from "./studio-config.mjs";
 export const name = "incognito-host";
@@ -36,7 +37,7 @@ export function apply(ctx, config = {}) {
     },
     status() {
       const s = state();
-      return { model: { a: "Heretic", b: "QQZ" }[s?.slot] ?? null, status: s?.status ?? "stopped" };
+      return { model: { a: MODEL_A, b: MODEL_B }[s?.slot] ?? null, status: s?.status ?? "stopped" };
     },
     async canEnter() {
       if (ctx.get("localImageGpu")?.busy || (await ctx.get("privateArtPolicy")?.isBusy?.()))
@@ -48,7 +49,7 @@ export function apply(ctx, config = {}) {
       const s = state();
       if (!s) throw Error("模型控制器尚未就绪。");
       if (!["ready", "stopped", "error"].includes(s.status)) throw Error("请等待模型启动或停止完成。");
-      const slot = model === "Heretic" ? "a" : "b";
+      const slot = normalizeModelSlot(model) === MODEL_A ? "a" : "b";
       if (s.status === "ready" && s.slot === slot && ctx.get("localIncognitoEngine")?.isPrivate()) return;
       await ctx.get("localIncognitoEngine").selectPrivate(slot);
     },

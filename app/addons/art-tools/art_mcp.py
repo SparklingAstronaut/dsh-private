@@ -7,8 +7,8 @@ from urllib.parse import urlparse
 
 BASE = Path(__file__).resolve().parent
 OWNER = os.environ.get("PRIVATE_ART_OWNER")
-if OWNER not in {"Heretic", "QQZ"}:
-    raise RuntimeError("Launch through the Heretic/QQZ private MCP connector")
+if OWNER not in {"model-a", "model-b"}:
+    raise RuntimeError("Launch through the DSH Private MCP connector")
 DATA = Path(private_path("private")) / OWNER
 JOBS = DATA / "jobs"
 PRIVATE_MEMORY = False

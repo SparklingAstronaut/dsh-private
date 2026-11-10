@@ -48,7 +48,7 @@
     trustedHosts: []
 - id: agent-default-model
   config:
-    provider: qqz-kvmem
+    provider: private-local
     model: '@model-a'
 - id: agent-presets
   config:

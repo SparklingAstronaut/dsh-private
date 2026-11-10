@@ -2,6 +2,7 @@
 import { descendants } from "./session-family.mjs";
 import { inlineRow, refifyRow } from "./private-cache.mjs";
 import { isDeepStrictEqual } from "node:util";
+import { MODEL_A } from "../../model-slots.mjs";
 
 function serialize(runtime, action) {
   const pending = runtime.saveTail.catch(() => {}).then(action);
@@ -29,7 +30,7 @@ export function saveExplicitSnapshot(runtime, sessionId) {
     let chat = [...vault.chats.values()].find((item) => item.runtime?.header.id === sessionId);
     let created = false;
     if (!chat) {
-      const id = vault.create(runtime.backend.bridge().status().model || "Heretic");
+      const id = vault.create(runtime.backend.bridge().status().model || MODEL_A);
       chat = vault.get(id);
       created = true;
     }

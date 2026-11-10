@@ -1,4 +1,5 @@
-import { resolvePrivatePath } from "../../portable-paths.mjs";
+import { modelAliases, resolvePrivatePath } from "../../portable-paths.mjs";
+import { MODEL_A, MODEL_B } from "../../model-slots.mjs";
 import path from "node:path";
 import { moduleOf } from "./imports.mjs";
 import { canonical, bumpFiles } from "./private-data.mjs";
@@ -57,7 +58,9 @@ export function apply(ctx) {
           const row = globalThis.privateSessions.rows.get(exec.agent?.session?.id);
           if (!row) throw Error("Private chat required");
           const model = exec.agent.session.requestHeader()?.config?.model ?? "";
-          const owner = /ZeroRefusal|QQZ/i.test(model) ? "QQZ" : "Heretic";
+          // MCP files are kept per model slot; the slot follows the model this request used.
+          const owner =
+            model === modelAliases[MODEL_B] && model !== modelAliases[MODEL_A] ? MODEL_B : MODEL_A;
           const inputFiles = Object.values(row.files || {});
           if (t.server === "documents") {
             const target = await ctx.fs.resolve(args.input_file, { cwd: exec.agent.session.header.cwd });

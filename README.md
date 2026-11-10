@@ -86,7 +86,7 @@ Saved archives use **AES-256-GCM** encryption with scrypt-derived keys. Only exp
 | Encrypted archives | `%APPDATA%\DSH-Private\private\Incognito` |
 | Connection settings | `%APPDATA%\DSH-Private\settings.json` |
 
-**Before upgrading:** close the app and back up its data directory. Keep the vault password separately. DSH Private does not automatically migrate another installation's archives.
+**Before upgrading:** close the app and back up its data directory. Keep the vault password separately. DSH Private does not automatically migrate another installation's archives. Archives from Preview 1–3 open normally; once this version saves them, they store the neutral slot names `model-a` / `model-b` and can no longer be opened by Preview 1–3.
 
 The local model server runs separately: closing DSH Private does not stop it or erase its logs. Connection settings and operational logs are not encrypted, and optional tools may access files or networks. This is a developer-tested preview, not an independently audited security product or a guarantee of forensic erasure. Read the [privacy and security boundaries](SECURITY.md) before using sensitive data.
 

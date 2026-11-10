@@ -1,5 +1,6 @@
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { modelAliases, localModelUrl } from "../../portable-paths.mjs";
+import { LOCAL_PROVIDER, MODEL_SLOTS } from "../../model-slots.mjs";
 import { resolvePrivatePath } from "../../portable-paths.mjs";
 import { bindStudioImageWorker } from "./studio-image-rpc.mjs";
 import { bindPluginWorker } from "./plugin-rpc.mjs";
@@ -290,8 +291,8 @@ try {
     plugins?.base ?? pathToFileURL(appRoot + "/package.json").href,
   );
   if (!ctx.get("settings") || !ctx.get("configEditor")) throw Error("Private settings services unavailable");
-  const catalog = await ctx.llm.listModels("qqz-kvmem");
-  for (const model of [modelAliases.Heretic, modelAliases.QQZ])
+  const catalog = await ctx.llm.listModels(LOCAL_PROVIDER);
+  for (const model of MODEL_SLOTS.map((slot) => modelAliases[slot]))
     if (!catalog.some((row) => row.id === model)) throw Error("Private model catalog incomplete");
   hydrate();
   const workspace = await ctx.workspaceRegistry.create(resolvePrivatePath("data/empty-home"), "无痕工作区");
@@ -340,11 +341,11 @@ parentPort.on("message", async ({ id, method, args }) => {
         throw Error("Missing private chat");
       value = { sessionId: args.sessionId, exists: true };
     } else if (method === "model-catalog") {
-      value = await ctx.llm.listModels("qqz-kvmem");
+      value = await ctx.llm.listModels(LOCAL_PROVIDER);
     } else if (method === "model-select") {
-      if (![modelAliases.Heretic, modelAliases.QQZ].includes(args.model))
+      if (!MODEL_SLOTS.some((slot) => modelAliases[slot] === args.model))
         throw Error("Unsupported private model");
-      await ctx.agentDefaultModel.saveSelection({ provider: "qqz-kvmem", model: args.model });
+      await ctx.agentDefaultModel.saveSelection({ provider: LOCAL_PROVIDER, model: args.model });
       value = ctx.agentDefaultModel.currentSelection();
     } else if (method === "plugin-inventory") {
       value = await ctx.pluginManager.listPlugins();

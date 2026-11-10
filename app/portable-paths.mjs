@@ -1,14 +1,15 @@
 import path from "node:path";
 import os from "node:os";
 import { fileURLToPath } from "node:url";
+import { MODEL_A, MODEL_B } from "./model-slots.mjs";
 export const appRoot = fileURLToPath(new URL("./", import.meta.url));
 export const dataRoot = path.resolve(
   process.env.DSH_PRIVATE_DATA_ROOT || path.join(process.env.LOCALAPPDATA || os.homedir(), "DSH-Private"),
 );
 export const settings = JSON.parse(process.env.DSH_PRIVATE_SETTINGS || "{}");
 export const modelAliases = {
-  Heretic: settings.modelA || "local-model-a",
-  QQZ: settings.modelB || settings.modelA || "local-model-b",
+  [MODEL_A]: settings.modelA || "local-model-a",
+  [MODEL_B]: settings.modelB || settings.modelA || "local-model-b",
 };
 export function validateModelUrl(value) {
   const u = new URL(value);

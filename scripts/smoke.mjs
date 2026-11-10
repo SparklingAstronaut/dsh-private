@@ -91,7 +91,7 @@ const { savedSessions } = await importApp("addons/incognito/session-family.mjs")
 const provider = {
   displayName: "Synthetic local model",
   api: "openai-completions",
-  apiKeyEnv: "QQZ_LOCAL_API_KEY",
+  apiKeyEnv: "DSH_PRIVATE_LOCAL_API_KEY",
   baseURL: baseUrl,
   compat: {
     supportsStore: false,
@@ -110,12 +110,12 @@ const provider = {
   ],
 };
 const bridge = {
-  status: () => ({ model: "Heretic", status: "ready" }),
+  status: () => ({ model: "model-a", status: "ready" }),
   select: async () => {},
   activity() {},
   stop: async () => {},
   privateSettings: () => ({
-    "llm-pi-ai": { providers: { "qqz-kvmem": provider } },
+    "llm-pi-ai": { providers: { "private-local": provider } },
     locale: { preference: "en" },
   }),
   privateExecutionConfig: () => ({ config: { cwd: root } }),
@@ -186,7 +186,7 @@ try {
   purgeAll();
   await backend.vault.initialize(password);
   await backend.action("unlock", { password });
-  const id = backend.vault.create("Heretic");
+  const id = backend.vault.create("model-a");
   await backend.send(id, "Synthetic check: 37 * 19");
   for (let i = 0; i < 100 && backend.pending.size; i++) await new Promise((r) => setTimeout(r, 50));
   assert.equal(backend.vault.get(id).messages.at(-1).content, "703");

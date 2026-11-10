@@ -166,7 +166,7 @@ export class PrivateRuntime {
     if (this.imageBusy) throw Error("请等待生图完成后再发送文字。");
     if (this.stopping || this.deleting) throw Error("Private runtime stopping or deleting");
     const model = Object.keys(models).find((k) => models[k] === alias);
-    if (!model) throw Error("Only local Heretic/QQZ allowed");
+    if (!model) throw Error("Only the local Model A / Model B are allowed");
     const bridge = this.backend.bridge();
     let selected = false,
       errors = 0;

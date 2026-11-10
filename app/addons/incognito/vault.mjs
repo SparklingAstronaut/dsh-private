@@ -1,4 +1,5 @@
 import { resolvePrivatePath } from "../../portable-paths.mjs";
+import { normalizeModelSlot, upgradeLegacyProviders } from "../../model-slots.mjs";
 import fs from "node:fs";
 import path from "node:path";
 import {
@@ -190,12 +191,12 @@ export class Vault {
       for (const row of data.chats) {
         const dk = Buffer.from(row.key, "base64");
         const record = JSON.parse(unseal(dk, row.box));
-        if (
-          !/^[a-f0-9-]{36}$/.test(record.id) ||
-          !["Heretic", "QQZ"].includes(record.model) ||
-          !Array.isArray(record.messages)
-        )
-          throw Error();
+        const model = normalizeModelSlot(record.model);
+        if (!/^[a-f0-9-]{36}$/.test(record.id) || !model || !Array.isArray(record.messages)) throw Error();
+        // Preview 1-3 archives use the old slot and provider names; the next save stores the new ones.
+        record.model = model;
+        upgradeLegacyProviders(record.runtime);
+        upgradeLegacyProviders(record.runtimeChildren);
         chats.set(record.id, { ...record, key: dk, saved: true, pending: false });
       }
       this.key = key;
@@ -275,7 +276,8 @@ export class Vault {
   }
   create(model) {
     this.check();
-    if (!["Heretic", "QQZ"].includes(model)) throw Error("无痕模式仅支持 Heretic / QQZ。");
+    model = normalizeModelSlot(model);
+    if (!model) throw Error("无痕模式仅支持模型 A / 模型 B。");
     const id = randomUUID();
     this.chats.set(id, {
       id,
