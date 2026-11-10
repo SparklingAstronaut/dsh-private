@@ -11,16 +11,16 @@
 
 <p align="center">
   <a href="https://github.com/SparklingAstronaut/dsh-private/actions/workflows/verify.yml"><img src="https://github.com/SparklingAstronaut/dsh-private/actions/workflows/verify.yml/badge.svg" alt="Windows build verification"></a>
-  <a href="https://github.com/SparklingAstronaut/dsh-private/releases/tag/v0.1.0-preview.3"><img src="https://img.shields.io/badge/release-Preview%203-8b9fbb?style=flat-square" alt="Preview 3"></a>
+  <a href="https://github.com/SparklingAstronaut/dsh-private/releases/tag/v0.1.0-preview.4"><img src="https://img.shields.io/badge/release-Preview%204-8b9fbb?style=flat-square" alt="Preview 4"></a>
   <img src="https://img.shields.io/badge/Windows-10%20%2F%2011%20%C2%B7%20x64-536782?style=flat-square" alt="Windows 10 / 11 x64">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-607d73?style=flat-square" alt="MIT License"></a>
 </p>
 
-<h3 align="center"><a href="https://github.com/SparklingAstronaut/dsh-private/releases/download/v0.1.0-preview.3/DSH-Private-0.1.0-preview.3-windows-x64.zip">Download for Windows ↗</a></h3>
+<h3 align="center"><a href="https://github.com/SparklingAstronaut/dsh-private/releases/download/v0.1.0-preview.4/DSH-Private-0.1.0-preview.4-windows-x64.zip">Download for Windows ↗</a></h3>
 
 <p align="center">
-  <a href="https://github.com/SparklingAstronaut/dsh-private/releases/tag/v0.1.0-preview.3">Release notes</a> ·
-  <a href="https://github.com/SparklingAstronaut/dsh-private/releases/download/v0.1.0-preview.3/SHA256SUMS.txt">SHA-256 checksums</a> ·
+  <a href="https://github.com/SparklingAstronaut/dsh-private/releases/tag/v0.1.0-preview.4">Release notes</a> ·
+  <a href="https://github.com/SparklingAstronaut/dsh-private/releases/download/v0.1.0-preview.4/SHA256SUMS.txt">SHA-256 checksums</a> ·
   <a href="docs/configuration.md">Configuration</a> ·
   <a href="README.zh-CN.md">简体中文</a>
 </p>
@@ -65,7 +65,7 @@ Open the app, unlock, and talk to your own local model. Conversations are tempor
 
 Core chat and setup support English. Some advanced privacy and Studio dialogs currently use Chinese labels.
 
-**New in Preview 3:** encrypted large-file caches with memory-only keys, startup recovery after an unclean exit, and public Windows build verification. Existing encrypted archives remain compatible, and the Preview 2 clean-reopen fix is retained. [View release →](https://github.com/SparklingAstronaut/dsh-private/releases/tag/v0.1.0-preview.3)
+**New in Preview 4:** neutral model slot names (`model-a` / `model-b`) with automatic conversion of Preview 1–3 archives, DSH Private named in the executable's version information, the DSH Private logo in the tray at every display scale, and source formatted for review with a CI formatting check. Encrypted caches, startup recovery, and public build verification from Preview 3 are retained. [View release →](https://github.com/SparklingAstronaut/dsh-private/releases/tag/v0.1.0-preview.4)
 
 <details>
 <summary><strong>Optional: images, Studio, tools, and MCP</strong></summary>
@@ -86,7 +86,7 @@ Saved archives use **AES-256-GCM** encryption with scrypt-derived keys. Only exp
 | Encrypted archives | `%APPDATA%\DSH-Private\private\Incognito` |
 | Connection settings | `%APPDATA%\DSH-Private\settings.json` |
 
-**Before upgrading:** close the app and back up its data directory. Keep the vault password separately. DSH Private does not automatically migrate another installation's archives. Archives from Preview 1–3 open normally; once this version saves them, they store the neutral slot names `model-a` / `model-b` and can no longer be opened by Preview 1–3.
+**Before upgrading:** close the app and back up its data directory. Keep the vault password separately. DSH Private does not automatically migrate another installation's archives. Archives from Preview 1–3 open normally; once Preview 4 or later saves them, they store the neutral slot names `model-a` / `model-b` and can no longer be opened by Preview 1–3.
 
 The local model server runs separately: closing DSH Private does not stop it or erase its logs. Connection settings and operational logs are not encrypted, and optional tools may access files or networks. This is a developer-tested preview, not an independently audited security product or a guarantee of forensic erasure. Read the [privacy and security boundaries](SECURITY.md) before using sensitive data.
 
