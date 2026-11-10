@@ -81,8 +81,16 @@ def build(source, output):
     if hashlib.sha256(node_license.read_bytes()).hexdigest() != inputs()["node"]["licenseSha256"]:
         raise SystemExit("Node license checksum mismatch.")
     shutil.copy2(node_license, app / "runtime/LICENSE.txt")
-    for name in ["app-icon.png", "tray-icon-blue.png"]:
-        shutil.copy2(ROOT / "app/assets/app.png", target / "build" / name)
+    shutil.copy2(ROOT / "app/assets/app.png", target / "build/app-icon.png")
+    # Electron picks the tray image for the display scale (100/125/150/200 %),
+    # so every scale variant must carry the DSH Private logo.
+    for size, name in [
+        (16, "tray-icon-blue.png"),
+        (20, "tray-icon-blue@1.25x.png"),
+        (24, "tray-icon-blue@1.5x.png"),
+        (32, "tray-icon-blue@2x.png"),
+    ]:
+        shutil.copy2(ROOT / f"app/assets/tray-{size}.png", target / "build" / name)
     shutil.copy2(ROOT / "app/assets/app.ico", target / "build/app-icon.ico")
     from pe_icon_resources import replace_icons, replace_version_info
 
