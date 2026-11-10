@@ -6,6 +6,10 @@ __pycache__/
 *.pyc
 .env
 .env.*
+# Local secrets and Python environments used by optional tools (for example pixiv.env)
+*.env
+venv/
+.venv/
 settings.json
 *.dshenc*
 *.log

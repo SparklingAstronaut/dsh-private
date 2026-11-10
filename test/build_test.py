@@ -10,6 +10,7 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 from build_support import tree_files, tree_digest, verify_upstream
 from verify_build import verify
+from scan_release import scan
 
 
 class BuildTests(unittest.TestCase):
@@ -50,6 +51,19 @@ class BuildTests(unittest.TestCase):
             with patch("verify_build.source_state", return_value={**state, "dirty": True}):
                 with self.assertRaisesRegex(ValueError, "clean source"):
                     verify(root, True)
+
+    def test_scan_flags_env_style_secrets_and_virtualenvs(self):
+        with tempfile.TemporaryDirectory(prefix="dsh-build-test-") as temporary:
+            root = Path(temporary)
+            (root / "app").mkdir()
+            (root / "app" / "notes.txt").write_text("SYNTHETIC")
+            self.assertEqual(scan(root, [])[1], [])
+            (root / "app" / "pixiv.env").write_text("SYNTHETIC_TOKEN=1")
+            (root / "app" / ".env.production").write_text("SYNTHETIC=1")
+            (root / "app" / "venv").mkdir()
+            (root / "app" / "venv" / "pyvenv.cfg").write_text("home = synthetic")
+            labels = sorted(label for _, label in scan(root, [])[1])
+            self.assertEqual(labels, ["data/cache file", "data/cache file", "virtual environment file"])
 
 
 if __name__ == "__main__":
