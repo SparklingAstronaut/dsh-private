@@ -10,6 +10,7 @@ import { bindPtcWorker } from "./ptc-rpc.mjs";
 import { bindShellWorker } from "./shell-rpc.mjs";
 import { bindSearchWorker } from "./search-rpc.mjs";
 import { createHash } from "node:crypto";
+import { WELCOME_NS, WELCOME_FIELD } from "./welcome-notice.mjs";
 import { hydrate, checkpoint, rowFp } from "./private-data.mjs";
 import { parentPort, workerData } from "node:worker_threads";
 import fs from "node:fs";
@@ -22,6 +23,13 @@ globalThis.privateReadStudioImage = bindStudioImageWorker(parentPort);
 globalThis.privatePtc = bindPtcWorker(parentPort);
 globalThis.privateShell = bindShellWorker(parentPort);
 globalThis.privateSeed = workerData.seed;
+// An acknowledgement of DSH's internal-testing notice is handed to the app to keep (welcome-notice.mjs).
+let welcomeNotice = workerData.seed.settings?.[WELCOME_NS]?.[WELCOME_FIELD];
+globalThis.privateWelcomeNotice = (version) => {
+  if (typeof version !== "string" || version === welcomeNotice) return;
+  welcomeNotice = version;
+  parentPort.postMessage({ type: "welcome-notice", version });
+};
 bindSearchWorker(parentPort);
 process.env.DSH_TELEMETRY_DISABLED = "1";
 process.env.DSH_HOME = resolvePrivatePath("data/empty-home");
@@ -268,7 +276,7 @@ try {
     fileURLToPath(new URL("./private.patch.yml", import.meta.url)),
   );
   privacy.splice(0, privacy.length, ...locatePrivatePatch(privacy));
-  for (const id of ["llm-pi-ai", "locale"])
+  for (const id of ["llm-pi-ai", "locale", WELCOME_NS])
     if (globalThis.privateSeed.settings?.[id])
       privacy.push({ id, config: structuredClone(globalThis.privateSeed.settings[id]) });
   const plugins = workerData.pluginProfile

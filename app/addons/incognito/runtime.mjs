@@ -119,6 +119,10 @@ export class PrivateRuntime {
       }
       if (m.type === "image-cancel" && m.id === this.imageRequestId) this.onImageCancel?.();
       if (m.type === "engine-activity") this.backend.bridge()?.activity?.(m.delta);
+      if (m.type === "welcome-notice")
+        Promise.resolve()
+          .then(() => this.backend.bridge()?.rememberWelcomeNotice?.(m.version))
+          .catch(() => {});
       if (m.type === "engine-request")
         this.ensureModel(m.model).then(
           () => this.worker.postMessage({ type: "engine-result", id: m.id, ok: true }),

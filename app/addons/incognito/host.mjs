@@ -3,6 +3,7 @@ import { modelAliases, settings, resolvePrivatePath } from "../../portable-paths
 import { MODEL_A, MODEL_B, normalizeModelSlot } from "../../model-slots.mjs";
 import { fileURLToPath } from "node:url";
 import { configurePrivateStudioAtStartup } from "./studio-config.mjs";
+import { welcomeSeed, rememberWelcome } from "./welcome-notice.mjs";
 export const name = "incognito-host";
 export const inject = ["settings", "agents", "tools"];
 export function apply(ctx, config = {}) {
@@ -33,9 +34,16 @@ export function apply(ctx, config = {}) {
       return ctx.get("web").search(request, signal);
     },
     privateSettings() {
-      return typeof settings.provider === "string"
-        ? reusedProviderSettings(ctx.settings.describe())
-        : privateModelSettings();
+      const describe = ctx.settings.describe();
+      return {
+        ...(typeof settings.provider === "string"
+          ? reusedProviderSettings(describe)
+          : privateModelSettings()),
+        ...welcomeSeed(describe),
+      };
+    },
+    rememberWelcomeNotice(version) {
+      return rememberWelcome(ctx.settings, version);
     },
     status() {
       const s = state();

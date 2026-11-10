@@ -1,4 +1,5 @@
 import { moduleOf } from "./imports.mjs";
+import { WELCOME_NS, WELCOME_FIELD } from "./welcome-notice.mjs";
 const { default: ConfigEditor } = await moduleOf("@deepseek-ai/dsh-config-editor");
 const { Context, resolveConfig } = await moduleOf("@deepseek-ai/cordis");
 const { deepEqual, volatileEntries, updateVolatile } = await moduleOf("@deepseek-ai/cosmokit");
@@ -46,6 +47,9 @@ export default class extends ConfigEditor {
           entry.fiber.ctx.emit(scope, "loader/volatile-update", paths);
         }
       } else entry.fiber.update(next, true);
+      // The one private setting kept after the runtime ends: acknowledging DSH's internal-testing
+      // notice, so it is shown once instead of after every unlock (welcome-notice.mjs).
+      if (entry.options.id === WELCOME_NS) globalThis.privateWelcomeNotice?.(next?.[WELCOME_FIELD]);
       await new Promise((resolve) => setImmediate(resolve));
       this.ownerContext.root.emit("app-boot/config-reload");
     });

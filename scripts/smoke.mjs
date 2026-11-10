@@ -109,6 +109,7 @@ const provider = {
     },
   ],
 };
+const rememberedNotices = [];
 const bridge = {
   status: () => ({ model: "model-a", status: "ready" }),
   select: async () => {},
@@ -117,7 +118,9 @@ const bridge = {
   privateSettings: () => ({
     "llm-pi-ai": { providers: { "private-local": provider } },
     locale: { preference: "en" },
+    "ui-settings-general": { welcomeNoticeVersion: "smoke-notice-1" },
   }),
+  rememberWelcomeNotice: async (version) => rememberedNotices.push(version),
   privateExecutionConfig: () => ({ config: { cwd: root } }),
 };
 const backend = new Backend({ root: path.join(root, "vault"), bridge: () => bridge });
@@ -236,6 +239,19 @@ try {
     assert.equal(envelope.result?.ok, true, JSON.stringify(envelope));
     return envelope.result.value;
   };
+  // DSH's internal-testing notice: the normal profile's acknowledgement reaches the private
+  // runtime, and one made in private mode is handed back to be saved there.
+  const notice = async () =>
+    (await rpc("settings/describe", {})).namespaces.find((row) => row.ns === "ui-settings-general")?.value
+      ?.welcomeNoticeVersion;
+  assert.equal(await notice(), "smoke-notice-1");
+  await rpc("settings/update", {
+    ns: "ui-settings-general",
+    patch: { welcomeNoticeVersion: "smoke-notice-2" },
+  });
+  for (let i = 0; i < 50 && !rememberedNotices.length; i++) await new Promise((r) => setTimeout(r, 50));
+  assert.deepEqual(rememberedNotices, ["smoke-notice-2"]);
+  assert.equal(await notice(), "smoke-notice-2");
   const workspaces = await rpc("workspace/create", { request: { path: path.join(root, "empty-home") } });
   const created = await rpc("session/create", {
     request: { workspaceId: workspaces.workspace.workspaceId, agentPreset: "standard" },

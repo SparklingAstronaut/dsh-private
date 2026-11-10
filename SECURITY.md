@@ -6,7 +6,7 @@ Starting with Preview 3, large chat-file spill caches also use AES-256-GCM. Thei
 
 Explicit shell/PTC jobs still require plaintext working files. These are separate from the encrypted chat-file cache: normal shutdown removes their managed directories, and the next startup recovers marked directories belonging to dead processes before the password gate. A power failure, a reused process ID, another process holding a file open, or an external tool's own output can delay or prevent deletion. Optional tools are not an encrypted filesystem, and deletion is not secure erasure.
 
-This is **not** an anonymity tool, an OS sandbox, or a guarantee of forensic erasure. An unlocked app, malicious software, an administrator, paging/hibernation, OS crash dumps, backups, and screen capture can expose data. Connection settings and operational logs are not encrypted. Do not put secrets in model names or endpoint paths.
+This is **not** an anonymity tool, an OS sandbox, or a guarantee of forensic erasure. An unlocked app, malicious software, an administrator, paging/hibernation, OS crash dumps, backups, and screen capture can expose data. Connection settings, operational logs, and your acknowledgement of DSH's internal-testing notice (kept in the normal DSH profile so the notice appears once) are not encrypted. Do not put secrets in model names or endpoint paths.
 
 The chat endpoint must be HTTP on the local loopback interface. This prevents accidentally configuring a remote chat endpoint; it does not authenticate the local model server. Other local processes may reach that server. Its logging and retention settings are outside this app's control. DSH Private never terminates a model server started by the user.
 
