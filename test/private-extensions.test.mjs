@@ -4,7 +4,8 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { loadSkills } from "../app/addons/incognito/prompt-skills.mjs";
-import { privateServers, validAdapter } from "../app/addons/incognito/private-tool-config.mjs";
+import { ownerRoot, privateServers, validAdapter } from "../app/addons/incognito/private-tool-config.mjs";
+import { resolvePrivatePath } from "../app/portable-paths.mjs";
 import { execFileSync } from "node:child_process";
 
 const portablePaths = new URL("../app/portable-paths.mjs", import.meta.url).href;
@@ -81,6 +82,17 @@ test("private tool servers are limited to documents and valid configured adapter
   );
   assert.deepEqual(privateServers(["my-tool"], undefined), []);
   assert.deepEqual(privateServers(undefined, adapters), []);
+});
+
+test("private tool input files are copied from the model slot's own folder", () => {
+  // Preview 1-4 joined the folder name without a separator, so attachments never reached the server.
+  const root = ownerRoot("model-a");
+  assert.equal(root, path.join(resolvePrivatePath("private"), "model-a"));
+  const inside = path.relative(
+    root,
+    path.join(resolvePrivatePath("private"), "model-a", "documents", "report"),
+  );
+  assert.equal(inside, path.join("documents", "report"));
 });
 
 test("the private image runtime needs an encrypted workspace and absolute ComfyUI paths", async () => {

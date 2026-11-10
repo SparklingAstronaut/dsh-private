@@ -1,4 +1,5 @@
 import path from "node:path";
+import { resolvePrivatePath } from "../../portable-paths.mjs";
 
 // Private MCP servers. "documents" is built in; any other name must be an adapter the user
 // configured in settings.json under mcp.adapters. Adapters run inside the same in-memory sandbox
@@ -31,3 +32,11 @@ export function privateServers(names, adapters) {
     ),
   ];
 }
+
+/**
+ * Host path of a model slot's folder inside the private tool sandbox. Files below it are copied
+ * into the server's in-memory filesystem before a call.
+ * @param {string} owner - model-a or model-b.
+ * @returns {string} absolute folder path.
+ */
+export const ownerRoot = (owner) => path.join(resolvePrivatePath("private"), owner);

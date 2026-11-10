@@ -2,7 +2,7 @@ import { settings, appRoot as portableAppRoot, dataRoot } from "../../portable-p
 import { resolvePrivatePath } from "../../portable-paths.mjs";
 import { MODEL_A, MODEL_SLOTS } from "../../model-slots.mjs";
 import { stopMcpClients } from "./mcp-shutdown.mjs";
-import { privateServers } from "./private-tool-config.mjs";
+import { ownerRoot, privateServers } from "./private-tool-config.mjs";
 import { executionReference, readExecutionReference } from "./execution-reference.mjs";
 import { purgeAll, purgeExcept, spillFile } from "./private-cache.mjs";
 import { moduleOf } from "./imports.mjs";
@@ -206,7 +206,7 @@ export class PrivateMcp {
     if (this.stopping) throw Error("Private MCP stopping");
     pair.busy = true;
     try {
-      const root = path.resolve(resolvePrivatePath("private/") + owner),
+      const root = ownerRoot(owner),
         inside = (p) => {
           const r = path.relative(root, path.resolve(p));
           return r === "" || (!r.startsWith("..") && !path.isAbsolute(r));

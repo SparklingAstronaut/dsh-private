@@ -1,8 +1,9 @@
-import { modelAliases, resolvePrivatePath } from "../../portable-paths.mjs";
+import { modelAliases } from "../../portable-paths.mjs";
 import { MODEL_A, MODEL_B } from "../../model-slots.mjs";
 import path from "node:path";
 import { moduleOf } from "./imports.mjs";
 import { canonical, bumpFiles } from "./private-data.mjs";
+import { ownerRoot } from "./private-tool-config.mjs";
 const { createMcpToolDefinition } = await moduleOf("@deepseek-ai/dsh-mcp-client");
 export const inject = ["tools", "attachments", "fs"];
 export function mergeMcpFiles(row, out) {
@@ -67,12 +68,7 @@ export function apply(ctx) {
             const data = await ctx.fs.readBytes(target, exec.signal, 32 * 1024 * 1024);
             args = {
               ...args,
-              input_file: path.join(
-                resolvePrivatePath("private"),
-                owner,
-                "documents",
-                path.basename(target.displayPath),
-              ),
+              input_file: path.join(ownerRoot(owner), "documents", path.basename(target.displayPath)),
             };
             inputFiles.push({ path: args.input_file, data: Buffer.from(data).toString("base64") });
           }
