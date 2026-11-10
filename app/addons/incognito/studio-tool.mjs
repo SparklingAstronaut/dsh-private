@@ -1,5 +1,4 @@
 import { createHash } from "node:crypto";
-import { advancedImageKeys } from "./studio-tool-parameters.mjs";
 
 export async function inspectPrivateStudio(runtime, sessionId, signal) {
   signal?.throwIfAborted();
@@ -14,11 +13,11 @@ export async function inspectPrivateStudio(runtime, sessionId, signal) {
   return { enabled: true, busy: studio.busy, images, catalog: catalog ?? { workflows: [], loras: [] } };
 }
 
-export function dispatchPrivateImage(runtime, legacy, args) {
+// Private image generation runs only through private Studio: an image plugin with the private
+// interface plus private-studio.json. There is no fallback generator.
+export function dispatchPrivateImage(runtime, args) {
   if (runtime.studio) return generateStudioImage(runtime, args);
-  if (advancedImageKeys.some((key) => args[key] !== undefined))
-    throw Error("Private Studio is not enabled; advanced image requests cannot use the legacy generator");
-  return legacy({ ...args, fromTool: true });
+  throw Error("无痕生图需要支持无痕模式的生图插件和 private-studio.json，请先完成配置。");
 }
 
 export async function readStudioAttachment(runtime, sessionId, studio, attachment, signal) {
@@ -50,11 +49,17 @@ export async function generateStudioImage(runtime, args) {
   if (!runtime.studio || runtime.stopping || runtime.deleting) throw Error("Private Studio unavailable");
   if (runtime.studioToolSession) throw Error("Private image tool already running");
   const { sessionId, prompt, resolution = 1024 } = args;
-  const request = {
-    prompt,
-    studio_workflow: args.studio_workflow || "qwen-t2i",
-    fidelity_profile: args.fidelity_profile || "local-16gb",
-  };
+  const rows = (await runtime.studio.describe?.(sessionId))?.workflows ?? [];
+  const workflowId = args.studio_workflow || rows.find((row) => row?.selectable !== false)?.id;
+  if (typeof workflowId !== "string") throw Error("No private image workflow is available");
+  const row =
+    rows.find(
+      (item) =>
+        item?.id === workflowId && (!args.fidelity_profile || item.fidelity === args.fidelity_profile),
+    ) ?? rows.find((item) => item?.id === workflowId);
+  const request = { prompt, studio_workflow: workflowId };
+  const profile = args.fidelity_profile || row?.fidelity;
+  if (typeof profile === "string") request.fidelity_profile = profile;
   for (const key of [
     "width",
     "height",
@@ -65,9 +70,10 @@ export async function generateStudioImage(runtime, args) {
     "loras",
     "references",
     "maskReference",
+    "parameters",
   ])
     if (args[key] !== undefined) request[key] = args[key];
-  if (!request.studio_workflow.includes("upscale")) {
+  if (row?.keepsInputSize !== true) {
     request.width ??= resolution;
     request.height ??= resolution;
   }

@@ -49,7 +49,7 @@ window.__ModuleLoader__.load({
                 { style: { margin: "12px 0" } },
                 h("img", {
                   src: url,
-                  alt: "Qwen Image 2.1 生成的图片",
+                  alt: "生成的图片",
                   style: {
                     display: "block",
                     maxWidth: "100%",

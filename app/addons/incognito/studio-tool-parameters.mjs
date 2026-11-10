@@ -19,16 +19,15 @@ export const privateImageParameters = {
   },
   studio_workflow: {
     type: "string",
-    enum: ["qwen-t2i", "qwen-i2i", "anima", "ref-t2i", "ref-i2i", "ref-seedvr2-upscale", "ref-vosr2-upscale"],
-    description: "Default qwen-t2i. Exact missing models are rejected, never substituted.",
+    description:
+      "Workflow ID from inspect_image_studio. Defaults to the first available workflow. Missing models are rejected, never substituted.",
   },
   fidelity_profile: {
     type: "string",
-    enum: ["local-16gb", "strict-source"],
-    description: "Default local-16gb. strict-source requires exact original weights.",
+    description: "Optional model profile ID listed for the workflow by inspect_image_studio.",
   },
-  width: { type: "integer", description: "Output width; ignored by upscale workflows." },
-  height: { type: "integer", description: "Output height; ignored by upscale workflows." },
+  width: { type: "integer", description: "Output width; ignored by workflows that keep the input size." },
+  height: { type: "integer", description: "Output height; ignored by workflows that keep the input size." },
   seed: { type: "integer", description: "Reproducible seed, or -1 for random." },
   steps: { type: "integer", description: "Sampling steps." },
   cfg: { type: "number", description: "Guidance strength." },
@@ -54,10 +53,10 @@ export const privateImageParameters = {
   },
   maskReference: {
     ...reference,
-    description: "Existing alpha PNG mask from this chat, for Anima with a reference image only.",
+    description: "Existing alpha PNG mask from this chat, only for workflows that accept a mask.",
+  },
+  parameters: {
+    type: "object",
+    description: "Workflow-specific options listed by inspect_image_studio, as {option key: value}.",
   },
 };
-
-export const advancedImageKeys = Object.keys(privateImageParameters).filter(
-  (key) => !["prompt", "resolution"].includes(key),
-);

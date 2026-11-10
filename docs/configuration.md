@@ -8,7 +8,7 @@ Optional integrations are retained as source but not automatically configured in
 
 - `imageRoot` may point to the user's compatible local image runtime, including its own `python_embeded/python.exe` and model setup. Image model/server downloads are not included.
 - `mcp.python`, `mcp.sitePackages`, and `mcp.servers` enable private tool servers in a user-owned Python environment. The default server list is empty. See [Private tool adapters](#private-tool-adapters).
-- Studio requires an explicitly prepared `private-studio.json` inside the app's data directory and a compatible image backend. Its schema is validated in `app/addons/incognito/studio-config.mjs`. Encrypted images must stay with their matching vault.
+- Private Studio (image generation in private mode) needs an image plugin that provides the services listed under [Plugins](#plugins), your own ComfyUI installation, and an explicitly prepared `private-studio.json` inside the app's data directory. See [Private Studio](#private-studio). Encrypted images must stay with their matching vault.
 - Shell/PTC execution requires the corresponding OS tools. External writes/tools are not a zero-trace environment.
 
 Do not copy another user's `settings.json`, credentials, plugins, or vault into a public distribution. The application does not auto-import data from official DSH or earlier custom installations.
@@ -22,6 +22,69 @@ DSH Private is DSH with a private-mode core, so DSH plugins can be added to its 
 - `localImageGpu` with `runPrivate()`, `retryRecovery()` and `busy`: hands the GPU between the chat model and private image jobs.
 - `privateStudioCompiler` with `describe()` and `prepare()`: supplies image workflows for private Studio. The core runs them in an encrypted workspace, encrypts the results and keeps them in the vault's private gallery.
 - `privateEntryGuard` with `isBusy()`: keeps private mode closed while the plugin's own normal-mode job is still running.
+
+## Private Studio
+
+`private-studio.json` tells the core where to keep encrypted images and how to start your ComfyUI inside an encrypted, authenticated workspace. Every path must be absolute:
+
+```json
+{
+  "version": 1,
+  "enabled": true,
+  "assetRoot": "D:/PrivateStudio/assets",
+  "mountRoot": "D:/PrivateStudio/mounts",
+  "mountDrive": "Y:",
+  "securefsExe": "C:/Tools/securefs/securefs.exe",
+  "securefsSha256": "<sha256 of securefs.exe>",
+  "pythonExe": "C:/ComfyUI/python_embeded/python.exe",
+  "pythonSha256": "<sha256 of python.exe>",
+  "storagePolicy": "D:/PrivateStudio/storage-policy.json",
+  "comfyDir": "C:/ComfyUI/ComfyUI",
+  "pythonPaths": ["C:/ComfyUI/deps"],
+  "extraModelPaths": ["C:/ComfyUI/extra_model_paths.yaml"]
+}
+```
+
+- `comfyDir` is the folder that contains ComfyUI's `main.py`. `pythonExe` runs it; its hash is checked before every image job.
+- `pythonPaths` (optional) are added in front of Python's search path, for example a folder of extra packages.
+- `extraModelPaths` (optional) are passed to ComfyUI as `--extra-model-paths-config`.
+- `assetRoot` holds encrypted images; `mountRoot` holds the encrypted temporary workspace that is mounted as `mountDrive` during a job. They must be separate folders and not on the mount drive.
+- `storagePolicy` is a file you create after testing the storage: `status` `"verified"`, `writeReadbackPassed` and `deviceErrorsReviewed` `true`, a `verifiedAt` date, and the same `assetRoot` and `mountRoot`. New image jobs are blocked until it matches.
+
+The image plugin decides which workflows exist and checks that their models are installed. Its `privateStudioCompiler.describe()` returns the catalog used by the private image window and the `generate_image` tool:
+
+```json
+{
+  "workflows": [
+    {
+      "id": "draw",
+      "label": "Draw",
+      "fidelity": "fast",
+      "fidelityLabel": "Fast",
+      "selectable": true,
+      "mask": false,
+      "keepsInputSize": false,
+      "defaults": { "steps": 25, "cfg": 4 },
+      "parameters": [
+        { "key": "strength", "label": "Strength", "type": "number", "default": 1, "step": 0.05 },
+        {
+          "key": "style",
+          "label": "Style",
+          "type": "select",
+          "options": [{ "value": "", "label": "Off" }, { "value": "soft", "label": "Soft" }]
+        }
+      ]
+    }
+  ],
+  "loras": [{ "assetId": "film", "name": "Film", "workflows": ["draw"], "defaultStrength": 0.8 }]
+}
+```
+
+- Give one row per workflow and model profile (`fidelity`). A row with `selectable: false` is shown but cannot run.
+- `mask: true` allows a mask image; `keepsInputSize: true` means the output follows the input size, so width and height are not sent.
+- `defaults` fills the size and sampling fields when the workflow is chosen.
+- `parameters` describes extra options of type `number`, `text`, `select` or `checkbox`. Their values arrive in `request.parameters`: at most 32 keys, each a number, a boolean or a string of up to 2,000 characters. The plugin checks what they mean.
+- `prepare(request, inputCount, hasMask)` returns a plan with `verifyModels(signal)` and `transform(...)`, which produces the ComfyUI graph.
 
 ## Private prompt skills
 

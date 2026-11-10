@@ -1,5 +1,4 @@
 import { moduleOf } from "./imports.mjs";
-import { createHash } from "node:crypto";
 import { privateImageParameters } from "./studio-tool-parameters.mjs";
 const { defineTool } = await moduleOf("@deepseek-ai/dsh-tools");
 export const inject = ["tools"];
@@ -55,7 +54,7 @@ export function apply(ctx) {
     defineTool({
       name: "generate_image",
       description:
-        "Generate, edit, or upscale an image with local Image Studio. Use inspect_image_studio to check workflows, LoRAs and existing image IDs. Default is Qwen Image 2.1 text-to-image. For editing use qwen-i2i and existing result IDs from this chat as references. Other workflows and LoRAs require their exact installed assets; never invent IDs or silently substitute a workflow after failure. The image is displayed directly in this chat. Images are temporary unless the user saves this chat.",
+        "Generate, edit, or upscale an image with the local image plugin in private mode. Call inspect_image_studio first to see the available workflows, their options, LoRAs and existing image IDs. To edit or upscale, pass existing result IDs from this chat as references. Missing models are rejected, never substituted.",
       timeoutMs: 1800000,
       parameters: privateImageParameters,
       output: {
@@ -89,8 +88,8 @@ export function apply(ctx) {
           kind: "dsh-image-gen",
           ...value,
           provider: "comfyui",
-          model: args.studio_workflow || "Qwen-Image 2.1",
-          output: value.studio ? "private-encrypted" : "private-memory",
+          model: args.studio_workflow || "image",
+          output: "private-encrypted",
         }),
       },
       async execute(args, exec) {
@@ -101,21 +100,12 @@ export function apply(ctx) {
           { ...args, sessionId: exec.agent.session.id },
           exec.signal,
         );
-        if (media.attachment && media.studio) return media;
-        const data = Buffer.from(media.png, "base64");
-        return {
-          attachment: {
-            attachmentId: createHash("sha256").update(data).digest("hex"),
-            mediaType: "image/png",
-            bytes: data.length,
-            width: media.width,
-            height: media.height,
-          },
-        };
+        if (!media?.attachment || !media.studio) throw Error("Private image result is incomplete.");
+        return media;
       },
       presentResult: (args, result) => ({
         card: "generic",
-        title: args.studio_workflow || "Qwen Image 2.1",
+        title: args.studio_workflow || "Private image",
         content: [{ type: "image", attachment: result.meta.attachment }],
       }),
     }),

@@ -22,39 +22,15 @@
   controls.className = "row";
   const workflow = element("select");
   workflow.setAttribute("aria-label", "图片工作流");
-  for (const [value, label] of [
-    ["qwen-t2i", "Qwen · 文生图"],
-    ["qwen-i2i", "Qwen · 参考图编辑"],
-    ["anima", "Anima"],
-    ["ref-t2i", "原工作流 · 文生图"],
-    ["ref-i2i", "原工作流 · 参考图编辑"],
-    ["ref-seedvr2-upscale", "SeedVR2 · 放大"],
-    ["ref-vosr2-upscale", "VOSR2 · 放大"],
-  ]) {
-    const option = element("option", label);
-    option.value = value;
-    workflow.append(option);
-  }
   const fidelity = element("select");
   fidelity.setAttribute("aria-label", "模型版本");
-  for (const [value, label] of [
-    ["local-16gb", "本机 16GB 适配"],
-    ["strict-source", "原始精确模型"],
-  ]) {
-    const option = element("option", label);
-    option.value = value;
-    fidelity.append(option);
-  }
+  fidelity.hidden = true;
   const mask = element("select");
   mask.setAttribute("aria-label", "蒙版图片");
   mask.disabled = true;
   mask.append(element("option", "不使用蒙版"));
   mask.options[0].value = "";
   controls.append(workflow, fidelity, mask);
-  workflow.onchange = () => {
-    mask.disabled = workflow.value !== "anima";
-    if (mask.disabled) mask.value = "";
-  };
   const prompt = element("textarea");
   prompt.placeholder = "描述你想生成或修改的图片…";
   prompt.maxLength = 8000;
@@ -83,62 +59,47 @@
     wrap.append(input);
     fields.append(wrap);
   }
-  const animaRow = element("div");
-  animaRow.className = "row";
-  const artists = element("input");
-  artists.type = "text";
-  artists.maxLength = 1000;
-  artists.placeholder = "画师混合：@画师A, @画师B";
-  artists.style.flex = "1 1 100%";
-  artists.setAttribute("aria-label", "画师混合");
-  const animaNumbers = {};
-  for (const [key, label, value, step] of [
-    ["anima_artist_strength", "画师强度", 1, "0.05"],
-    ["anima_lllite_strength", "LLLite 强度", 1, "0.05"],
-    ["anima_lllite_end", "LLLite 作用到", 1, "0.05"],
-  ]) {
-    const wrap = element("label", label),
-      input = element("input");
-    input.type = "number";
-    input.value = value;
-    input.step = step;
-    animaNumbers[key] = input;
-    wrap.append(input);
-    animaRow.append(wrap);
-  }
-  const lllite = element("select");
-  lllite.setAttribute("aria-label", "LLLite 控制");
-  for (const [value, label] of [
-    ["", "LLLite：关闭"],
-    ["reference", "LLLite：参考图控制"],
-    ["inpaint", "LLLite：局部重绘（需蒙版）"],
-  ]) {
-    const option = element("option", label);
-    option.value = value;
-    lllite.append(option);
-  }
-  const teacacheWrap = element("label", "TeaCache 加速（画质略降）"),
-    teacache = element("input");
-  teacache.type = "checkbox";
-  teacacheWrap.prepend(teacache);
-  animaRow.prepend(artists, lllite);
-  animaRow.append(teacacheWrap);
-  animaRow.hidden = true;
-  animaRow.style.display = "none";
-  const onAnima = workflow.onchange;
-  workflow.onchange = () => {
-    onAnima();
-    const on = workflow.value === "anima";
-    animaRow.hidden = !on;
-    animaRow.style.display = on ? "" : "none";
-    if (on) {
-      numbers.steps.value = 30;
-      numbers.cfg.value = 4.5;
+  // Workflow-specific options are declared by the image plugin (catalog row.parameters).
+  const optionRow = element("div");
+  optionRow.className = "row";
+  optionRow.hidden = true;
+  let optionInputs = {};
+  function renderOptions(row) {
+    optionRow.replaceChildren();
+    optionInputs = {};
+    for (const spec of Array.isArray(row?.parameters) ? row.parameters : []) {
+      if (typeof spec?.key !== "string" || !/^[A-Za-z][A-Za-z0-9_]{0,63}$/.test(spec.key)) continue;
+      const label = String(spec.label ?? spec.key);
+      let input;
+      if (spec.type === "select") {
+        input = element("select");
+        for (const choice of Array.isArray(spec.options) ? spec.options : []) {
+          const option = element("option", String(choice?.label ?? choice?.value ?? ""));
+          option.value = String(choice?.value ?? "");
+          input.append(option);
+        }
+        input.value = String(spec.default ?? input.options[0]?.value ?? "");
+      } else {
+        input = element("input");
+        input.type = spec.type === "checkbox" ? "checkbox" : spec.type === "number" ? "number" : "text";
+        if (input.type === "checkbox") input.checked = spec.default === true;
+        else input.value = spec.default ?? "";
+        for (const key of ["step", "min", "max"]) if (spec[key] !== undefined) input[key] = String(spec[key]);
+        if (input.type === "text") {
+          input.maxLength = Math.min(Number(spec.maxLength) || 1000, 2000);
+          input.placeholder = String(spec.placeholder ?? "");
+        }
+      }
+      input.setAttribute("aria-label", label);
+      const wrap = element("label", label);
+      if (input.type === "checkbox") wrap.prepend(input);
+      else wrap.append(input);
+      if (input.type === "text") wrap.style.flex = "1 1 100%";
+      optionInputs[spec.key] = input;
+      optionRow.append(wrap);
     }
-  };
-  lllite.addEventListener("change", () => {
-    if (lllite.value === "inpaint") numbers.denoise.value = 1;
-  });
+    optionRow.hidden = !Object.keys(optionInputs).length;
+  }
   const actionRow = element("div");
   actionRow.className = "row";
   const importButton = element("button", "导入图片"),
@@ -180,12 +141,16 @@
   const message = (error) => {
     if (!disposed) status.textContent = error.message || String(error);
   };
-  const blocked = () =>
-    catalog?.workflows?.find(
-      (row) =>
-        row.id === workflow.value &&
-        row.fidelity === (workflow.value.includes("upscale") ? "strict-source" : fidelity.value),
-    )?.selectable === false;
+  const rowsFor = (id) => (catalog?.workflows ?? []).filter((row) => row?.id === id);
+  const rowFor = (id) => {
+    const rows = rowsFor(id);
+    return rows.find((row) => row.fidelity === fidelity.value) ?? rows[0];
+  };
+  const currentRow = () => rowFor(workflow.value);
+  const blocked = () => {
+    const row = currentRow();
+    return !row || row.selectable === false;
+  };
   const buttons = (busy) => {
     working = busy;
     generate.disabled = busy || blocked();
@@ -195,14 +160,7 @@
   };
   function availability() {
     buttons(working);
-    for (const option of workflow.options) {
-      const row = catalog?.workflows?.find(
-        (item) =>
-          item.id === option.value &&
-          item.fidelity === (option.value.includes("upscale") ? "strict-source" : fidelity.value),
-      );
-      option.disabled = row?.selectable === false;
-    }
+    for (const option of workflow.options) option.disabled = rowFor(option.value)?.selectable === false;
     for (const [key, item] of loraChoices) {
       // Checkboxes and weights stay editable; LoRAs that don't serve the current workflow are
       // only greyed and labelled, and are skipped (with a notice) when generating.
@@ -212,17 +170,11 @@
       item.row.classList.toggle("lora-off", !serves);
       item.label.dataset.note = serves ? "" : "（" + loraWhere(item.asset) + "）";
     }
-    if (blocked()) status.textContent = "此工作流缺少精确模型或编译条件，暂时不能生成。";
+    if (!catalog?.workflows?.length)
+      status.textContent = "没有可用的无痕生图工作流。请先安装支持无痕模式的生图插件。";
+    else if (blocked()) status.textContent = "此工作流缺少精确模型或编译条件，暂时不能生成。";
   }
-  const workflowNames = {
-    "qwen-t2i": "Qwen 文生图",
-    "qwen-i2i": "Qwen 参考图编辑",
-    anima: "Anima",
-    "ref-t2i": "原工作流文生图",
-    "ref-i2i": "原工作流参考图编辑",
-    "ref-seedvr2-upscale": "SeedVR2 放大",
-    "ref-vosr2-upscale": "VOSR2 放大",
-  };
+  const workflowLabel = (id) => rowsFor(id).find((row) => typeof row.label === "string")?.label || id;
   function loraWorkflows(asset) {
     return asset.workflows ?? (asset.workflow ? [asset.workflow] : []);
   }
@@ -230,15 +182,58 @@
     return loraWorkflows(asset).includes(workflow.value);
   }
   function loraWhere(asset) {
-    const names = loraWorkflows(asset).map((id) => workflowNames[id] || id);
+    const names = loraWorkflows(asset).map(workflowLabel);
     return names.length ? "仅适用于 " + names.join(" / ") : "当前不可用";
   }
-  const onWorkflow = workflow.onchange;
+  let renderedWorkflow = null;
+  function workflowChanged() {
+    const row = currentRow();
+    if (workflow.value !== renderedWorkflow) {
+      renderedWorkflow = workflow.value;
+      renderOptions(row);
+      for (const [key, value] of Object.entries(row?.defaults ?? {}))
+        if (numbers[key] && Number.isFinite(Number(value))) numbers[key].value = value;
+    }
+    mask.disabled = row?.mask !== true;
+    if (mask.disabled) mask.value = "";
+  }
+  function renderWorkflowChoices() {
+    const previous = workflow.value,
+      previousProfile = fidelity.value;
+    const ids = [
+      ...new Set((catalog?.workflows ?? []).map((row) => row?.id).filter((id) => typeof id === "string")),
+    ];
+    workflow.replaceChildren(
+      ...ids.map((id) => {
+        const option = element("option", workflowLabel(id));
+        option.value = id;
+        return option;
+      }),
+    );
+    if (ids.includes(previous)) workflow.value = previous;
+    const profiles = new Map();
+    for (const row of catalog?.workflows ?? [])
+      if (typeof row?.fidelity === "string" && !profiles.has(row.fidelity))
+        profiles.set(row.fidelity, typeof row.fidelityLabel === "string" ? row.fidelityLabel : row.fidelity);
+    fidelity.replaceChildren(
+      ...[...profiles].map(([id, label]) => {
+        const option = element("option", label);
+        option.value = id;
+        return option;
+      }),
+    );
+    if (profiles.has(previousProfile)) fidelity.value = previousProfile;
+    fidelity.hidden = profiles.size < 2;
+    workflowChanged();
+  }
   workflow.onchange = () => {
-    onWorkflow();
+    workflowChanged();
     availability();
   };
-  fidelity.onchange = availability;
+  fidelity.onchange = () => {
+    workflowChanged();
+    availability();
+  };
   async function show(resultId, index) {
     if (loading) return;
     loading = true;
@@ -341,6 +336,7 @@
     if (disposed) return;
     sessionId = state.sessionId;
     catalog = state.catalog;
+    renderWorkflowChoices();
     buttons(state.busy);
     loraRows.replaceChildren();
     const previousLoras = new Map(
@@ -434,13 +430,14 @@
       status.textContent = "请填写图片描述。";
       return;
     }
-    const upscale = workflow.value.includes("upscale");
+    const row = currentRow(),
+      keepsInputSize = row?.keepsInputSize === true;
     const request = {
       prompt: prompt.value,
       studio_workflow: workflow.value,
-      fidelity_profile: upscale ? "strict-source" : fidelity.value,
       references: [...references.values()],
     };
+    if (typeof row?.fidelity === "string") request.fidelity_profile = row.fidelity;
     const checkedLoras = [...loraChoices.values()].filter((item) => item.box.checked && !item.box.disabled),
       skippedLoras = checkedLoras.filter((item) => !loraServes(item.asset));
     request.loras = checkedLoras
@@ -451,18 +448,19 @@
       status.textContent = "LoRA 权重必须是数字。";
       return;
     }
-    if (mask.value && workflow.value === "anima") {
+    if (mask.value && row?.mask === true) {
       const [resultId, index] = mask.value.split(":");
       request.maskReference = { resultId, index: Number(index) };
     }
     for (const [key, input] of Object.entries(numbers))
-      if (!upscale || key === "seed") request[key] = Number(input.value);
-    if (workflow.value === "anima") {
-      if (artists.value.trim()) request.anima_artists = artists.value.trim();
-      for (const [key, input] of Object.entries(animaNumbers)) request[key] = Number(input.value);
-      if (lllite.value) request.anima_lllite = lllite.value;
-      if (teacache.checked) request.anima_teacache = true;
+      if (!keepsInputSize || key === "seed") request[key] = Number(input.value);
+    const parameters = {};
+    for (const [key, input] of Object.entries(optionInputs)) {
+      if (input.type === "checkbox") parameters[key] = input.checked;
+      else if (input.type === "number") parameters[key] = Number(input.value);
+      else if (input.value.trim()) parameters[key] = input.value.trim();
     }
+    if (Object.keys(parameters).length) request.parameters = parameters;
     buttons(true);
     status.textContent = "正在生成；模型加载可能需要几分钟。";
     try {
@@ -751,13 +749,13 @@
   dialog.__showGallery = () => showTab("gallery");
   const note = element(
     "p",
-    "勾选图片作为参考。Anima 蒙版须使用带透明通道的 PNG，透明区域为修改区域。尚未安装的精确模型会提示不可用；关闭面板不会停止正在运行的任务。",
+    "勾选图片作为参考。需要蒙版的工作流请使用带透明通道的 PNG，透明区域为修改区域。缺少模型的工作流会显示为不可用；关闭面板不会停止正在运行的任务。",
   );
   workPane.append(
     hint,
     controls,
     prompt,
-    animaRow,
+    optionRow,
     advanced,
     loraPanel,
     actionRow,

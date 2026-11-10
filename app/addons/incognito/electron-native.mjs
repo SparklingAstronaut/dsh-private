@@ -13,7 +13,6 @@ import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { Backend } from "./backend.mjs";
 import { PrivateRuntime } from "./runtime.mjs";
-import { PrivateImages } from "./images.mjs";
 import { installTitlebar } from "./titlebar.mjs";
 const root = path.dirname(fileURLToPath(import.meta.url)),
   entries = new Map();
@@ -93,11 +92,6 @@ async function closeInner(entry) {
     stopFailed = true;
   }
   try {
-    await entry.images?.stop();
-  } catch {
-    stopFailed = true;
-  }
-  try {
     await entry.runtime?.stop();
   } catch {
     saveFailed = true;
@@ -159,10 +153,8 @@ async function startNative(entry) {
     });
     return result.canceled ? null : result.filePaths[0];
   };
-  runtime.onImageGenerate = (args) =>
-    dispatchPrivateImage(runtime, (value) => entry.images.generate(value), args);
-  runtime.onImageCancel = () =>
-    runtime.studio ? runtime.studio.cancel(runtime.studioToolSession) : entry.images.stop();
+  runtime.onImageGenerate = (args) => dispatchPrivateImage(runtime, args);
+  runtime.onImageCancel = () => runtime.studio?.cancel(runtime.studioToolSession);
   runtime.onFailure = () => close(entry);
   await runtime.start();
   if (entry.closing) {
@@ -196,7 +188,6 @@ async function open(contents) {
     view.setBackgroundColor("#19191a");
     const backend = new Backend(),
       entry = { view, window: win, backend, closing: false };
-    entry.images = new PrivateImages(entry);
     entries.set(view.webContents.id, entry);
     const session = view.webContents.session;
     const clipboardWrite = (permission) => permission === "clipboard-sanitized-write";
@@ -306,7 +297,6 @@ async function save(entry) {
   );
 }
 async function remove(entry) {
-  if (entry.images?.busy) throw Error("请等待生图完成或退出无痕模式后再删除。");
   const id = await selection(entry);
   if (!id) throw Error("请先选择一个聊天。");
   const answer = await dialog.showMessageBox(entry.window, {

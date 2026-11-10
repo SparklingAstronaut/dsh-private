@@ -14,6 +14,7 @@ export async function runPrivateImageTask({
   signal,
   storage,
   mountOptions,
+  imageRuntime = {},
   graph,
   inputs = [],
   inputKinds,
@@ -41,7 +42,12 @@ export async function runPrivateImageTask({
       signal,
       validateImages,
     });
-    runtime = createImageRuntime({ privateWorkspace: backend.workspace, sessionToken, cpuOnly });
+    runtime = createImageRuntime({
+      ...imageRuntime,
+      privateWorkspace: backend.workspace,
+      sessionToken,
+      cpuOnly,
+    });
     const adapter = new ComfyAdapter({
       baseURL: IMAGE_URL,
       sessionToken,

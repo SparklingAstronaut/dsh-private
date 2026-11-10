@@ -1,6 +1,23 @@
 import { privateImageExtension } from "../task-d/src/private-image-format.mjs";
 import { deleteSavedRevision } from "./studio-deletion.mjs";
 
+// Workflow-specific options are passed through to the image plugin, which validates their meaning.
+export function validWorkflowParameters(parameters) {
+  if (parameters === undefined) return true;
+  if (!parameters || typeof parameters !== "object" || Array.isArray(parameters)) return false;
+  const entries = Object.entries(parameters);
+  return (
+    entries.length <= 32 &&
+    entries.every(
+      ([key, value]) =>
+        /^[A-Za-z][A-Za-z0-9_]{0,63}$/.test(key) &&
+        (typeof value === "boolean" ||
+          (typeof value === "number" && Number.isFinite(value)) ||
+          (typeof value === "string" && value.length <= 2000)),
+    )
+  );
+}
+
 // sessionId is obtained by the host from the active conversation, not args.
 export async function studioAction(runtime, sessionId, method, args = {}) {
   if (!runtime?.studio || runtime.stopping || runtime.deleting) throw Error("图片工作流尚未就绪。");
@@ -29,18 +46,14 @@ export async function studioAction(runtime, sessionId, method, args = {}) {
       "loras",
       "references",
       "maskReference",
-      "anima_artists",
-      "anima_artist_strength",
-      "anima_lllite",
-      "anima_lllite_strength",
-      "anima_lllite_end",
-      "anima_teacache",
+      "parameters",
     ]);
     if (
       !args.request ||
       typeof args.request !== "object" ||
       Array.isArray(args.request) ||
-      Object.keys(args.request).some((key) => !allowed.has(key))
+      Object.keys(args.request).some((key) => !allowed.has(key)) ||
+      !validWorkflowParameters(args.request.parameters)
     )
       throw Error("图片请求包含不支持的参数。");
     return studio.generate(sessionId, args.request);

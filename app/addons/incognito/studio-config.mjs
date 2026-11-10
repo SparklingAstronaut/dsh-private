@@ -13,8 +13,11 @@ export function readPrivateStudioConfig(file) {
   const config = JSON.parse(fs.readFileSync(absolute(file), "utf8"));
   if (config.enabled === false) return null;
   if (config.version !== 1 || config.enabled !== true) throw Error("Invalid private Studio configuration");
-  for (const key of ["assetRoot", "mountRoot", "securefsExe", "pythonExe", "storagePolicy"])
+  for (const key of ["assetRoot", "mountRoot", "securefsExe", "pythonExe", "storagePolicy", "comfyDir"])
     absolute(config[key]);
+  for (const key of ["pythonPaths", "extraModelPaths"])
+    if (config[key] !== undefined && (!Array.isArray(config[key]) || !config[key].every(absolute)))
+      throw Error("Absolute private Studio configuration path required");
   if (
     !/^[D-Z]:$/.test(config.mountDrive) ||
     !/^[a-f0-9]{64}$/.test(config.securefsSha256) ||
@@ -84,6 +87,13 @@ export function configurePrivateStudio(ctx, file) {
         drive: config.mountDrive,
         exe: config.securefsExe,
         supervisorPython: config.pythonExe,
+      },
+      // The pinned pythonExe also runs ComfyUI, so the integrity check covers the image process.
+      imageRuntime: {
+        comfyDir: config.comfyDir,
+        python: config.pythonExe,
+        pythonPaths: config.pythonPaths ?? [],
+        extraModelPaths: config.extraModelPaths ?? [],
       },
       create: config.allowInitialCreate === true,
       assertStorageAvailable: privateStorageGate(config),

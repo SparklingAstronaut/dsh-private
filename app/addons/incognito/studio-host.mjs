@@ -9,6 +9,7 @@ import { require } from "./imports.mjs";
 export function createPrivateStudioFactory({
   assetRoot,
   mountOptions,
+  imageRuntime,
   transaction,
   compile,
   describe,
@@ -67,6 +68,7 @@ export function createPrivateStudioFactory({
           ...args,
           transaction,
           mountOptions,
+          imageRuntime,
           cpuOnly,
           validateImages: createImageInputValidator(require("sharp")),
         });

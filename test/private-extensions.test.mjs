@@ -79,3 +79,145 @@ test("private tool servers are limited to documents and valid configured adapter
   assert.deepEqual(privateServers(["my-tool"], undefined), []);
   assert.deepEqual(privateServers(undefined, adapters), []);
 });
+
+test("the private image runtime needs an encrypted workspace and absolute ComfyUI paths", async () => {
+  const { createImageRuntime } = await import("../app/addons/controller-stage/image-runtime.mjs");
+  const workspace = { root: path.resolve(os.tmpdir(), "workspace"), assertActive() {} };
+  const paths = {
+    comfyDir: path.resolve(os.tmpdir(), "ComfyUI"),
+    python: path.resolve(os.tmpdir(), "python.exe"),
+  };
+  assert.throws(() => createImageRuntime({ ...paths }), /encrypted workspace/);
+  assert.throws(
+    () => createImageRuntime({ privateWorkspace: workspace, ...paths, comfyDir: "ComfyUI" }),
+    /absolute/,
+  );
+  assert.throws(
+    () => createImageRuntime({ privateWorkspace: workspace, ...paths, extraModelPaths: ["models.yaml"] }),
+    /absolute/,
+  );
+  const runtime = createImageRuntime({ privateWorkspace: workspace, ...paths });
+  await assert.rejects(runtime.preflight(), /Missing image runtime/);
+});
+
+test("private Studio configuration requires absolute ComfyUI paths", async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "dsh-studio-config-test-"));
+  const previous = process.env.DSH_PRIVATE_DESKTOP_ROOT;
+  process.env.DSH_PRIVATE_DESKTOP_ROOT ??= root;
+  try {
+    const { readPrivateStudioConfig } = await import("../app/addons/incognito/studio-config.mjs");
+    const at = (...parts) => path.join(root, ...parts);
+    const base = {
+      version: 1,
+      enabled: true,
+      assetRoot: at("assets"),
+      mountRoot: at("mounts"),
+      securefsExe: at("securefs.exe"),
+      pythonExe: at("python.exe"),
+      storagePolicy: at("policy.json"),
+      comfyDir: at("ComfyUI"),
+      pythonPaths: [at("deps")],
+      extraModelPaths: [at("models.yaml")],
+      mountDrive: "Y:",
+      securefsSha256: "a".repeat(64),
+      pythonSha256: "b".repeat(64),
+    };
+    const file = at("private-studio.json");
+    const check = (config) => {
+      fs.writeFileSync(file, JSON.stringify(config));
+      return readPrivateStudioConfig(file);
+    };
+    assert.equal(check(base).comfyDir, at("ComfyUI"));
+    assert.throws(() => check({ ...base, comfyDir: undefined }), /Absolute/);
+    assert.throws(() => check({ ...base, comfyDir: "ComfyUI" }), /Absolute/);
+    assert.throws(() => check({ ...base, pythonPaths: ["deps"] }), /Absolute/);
+    assert.throws(() => check({ ...base, extraModelPaths: "models.yaml" }), /Absolute/);
+    assert.equal(
+      check({ ...base, pythonPaths: undefined, extraModelPaths: undefined }).pythonPaths,
+      undefined,
+    );
+  } finally {
+    if (previous === undefined) delete process.env.DSH_PRIVATE_DESKTOP_ROOT;
+    else process.env.DSH_PRIVATE_DESKTOP_ROOT = previous;
+    assert.equal(path.dirname(root), os.tmpdir());
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("private image requests follow the plugin catalog, not fixed workflow names", async () => {
+  const { dispatchPrivateImage } = await import("../app/addons/incognito/studio-tool.mjs");
+  await assert.rejects(async () => dispatchPrivateImage({}, { prompt: "x" }), /private-studio\.json/);
+  const png = Buffer.alloc(24);
+  Buffer.from("89504e470d0a1a0a", "hex").copy(png);
+  png.write("IHDR", 12);
+  png.writeUInt32BE(640, 16);
+  png.writeUInt32BE(480, 20);
+  const requests = [];
+  const runtime = {
+    studio: {
+      describe: async () => ({
+        workflows: [
+          { id: "busy", selectable: false },
+          { id: "draw", fidelity: "fast", selectable: true },
+          { id: "draw", fidelity: "exact", selectable: true },
+          { id: "enlarge", fidelity: "exact", keepsInputSize: true },
+        ],
+      }),
+      generate: async (sessionId, request) => {
+        requests.push(request);
+        return { resultId: "r1" };
+      },
+      async *read() {
+        yield png;
+      },
+    },
+  };
+  const first = await dispatchPrivateImage(runtime, { sessionId: "s1", prompt: "a cup" });
+  assert.equal(first.attachment.width, 640);
+  assert.deepEqual(requests[0], {
+    prompt: "a cup",
+    studio_workflow: "draw",
+    fidelity_profile: "fast",
+    width: 1024,
+    height: 1024,
+  });
+  await dispatchPrivateImage(runtime, {
+    sessionId: "s1",
+    prompt: "a cup",
+    studio_workflow: "draw",
+    fidelity_profile: "exact",
+    parameters: { strength: 0.5 },
+  });
+  assert.equal(requests[1].fidelity_profile, "exact");
+  assert.deepEqual(requests[1].parameters, { strength: 0.5 });
+  await dispatchPrivateImage(runtime, { sessionId: "s1", prompt: "larger", studio_workflow: "enlarge" });
+  assert.equal(requests[2].width, undefined);
+  assert.equal(requests[2].fidelity_profile, "exact");
+});
+
+test("workflow options passed to the image plugin are plain bounded values", async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "dsh-studio-actions-test-"));
+  const previous = process.env.DSH_PRIVATE_DESKTOP_ROOT;
+  process.env.DSH_PRIVATE_DESKTOP_ROOT ??= root;
+  try {
+    const { validWorkflowParameters } = await import("../app/addons/incognito/studio-actions.mjs");
+    assert.equal(validWorkflowParameters(undefined), true);
+    assert.equal(validWorkflowParameters({ strength: 0.8, style: "soft", fast: true }), true);
+    for (const bad of [
+      null,
+      [],
+      "text",
+      { "bad key": 1 },
+      { nested: { a: 1 } },
+      { list: [1] },
+      { big: "x".repeat(2001) },
+      { nan: Number.NaN },
+      Object.fromEntries(Array.from({ length: 33 }, (_, i) => ["k" + i, i])),
+    ])
+      assert.equal(validWorkflowParameters(bad), false);
+  } finally {
+    if (previous === undefined) delete process.env.DSH_PRIVATE_DESKTOP_ROOT;
+    else process.env.DSH_PRIVATE_DESKTOP_ROOT = previous;
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
