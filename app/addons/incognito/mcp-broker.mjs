@@ -2,6 +2,7 @@ import { settings, appRoot as portableAppRoot, dataRoot } from "../../portable-p
 import { resolvePrivatePath } from "../../portable-paths.mjs";
 import { MODEL_A, MODEL_SLOTS } from "../../model-slots.mjs";
 import { stopMcpClients } from "./mcp-shutdown.mjs";
+import { privateServers } from "./private-tool-config.mjs";
 import { executionReference, readExecutionReference } from "./execution-reference.mjs";
 import { purgeAll, purgeExcept, spillFile } from "./private-cache.mjs";
 import { moduleOf } from "./imports.mjs";
@@ -11,11 +12,10 @@ import { statSync } from "node:fs";
 import { createHash } from "node:crypto";
 const { Client } = await moduleOf("@modelcontextprotocol/client");
 const { StdioClientTransport } = await moduleOf("@modelcontextprotocol/client/stdio");
-const base = resolvePrivatePath("app/addons/art-tools");
 const python = settings.mcp?.python;
-const servers = (settings.mcp?.servers || []).filter((s) =>
-  ["pixiv", "art-dataset", "documents"].includes(s),
-);
+const sitePackages = typeof settings.mcp?.sitePackages === "string" ? settings.mcp.sitePackages : "";
+const servers = privateServers(settings.mcp?.servers, settings.mcp?.adapters);
+const sandbox = resolvePrivatePath("app/addons/incognito/memory-mcp.py");
 const norm = (p) => p.replace(/\\/g, "/").toLowerCase();
 const chunkBytes = 16 * 1024 * 1024;
 const dataOf = (r) => {
@@ -58,8 +58,8 @@ export class PrivateMcp {
     const transport = new StdioClientTransport({
       maxBufferSize: 384 * 1024 * 1024,
       command: python,
-      args: ["-B", resolvePrivatePath("app/addons/incognito/memory-mcp.py"), server],
-      cwd: base,
+      args: ["-B", sandbox, server],
+      cwd: path.dirname(sandbox),
       env: {
         SystemRoot: process.env.SystemRoot,
         PATH: process.env.PATH,
@@ -69,11 +69,9 @@ export class PrivateMcp {
         DSH_PRIVATE_DATA_ROOT: dataRoot,
         DSH_PRIVATE_SETTINGS: JSON.stringify(settings),
         PYTHONPATH:
-          path.join(portableAppRoot, "python") +
-          path.delimiter +
-          (settings.mcp?.sitePackages || base + "/venv/Lib/site-packages"),
+          path.join(portableAppRoot, "python") + (sitePackages ? path.delimiter + sitePackages : ""),
         PRIVATE_PARENT_PID: String(process.pid),
-        PRIVATE_ART_OWNER: owner,
+        PRIVATE_OWNER: owner,
       },
       stderr: "pipe",
     });
@@ -197,6 +195,10 @@ export class PrivateMcp {
     }
     return collected;
   }
+  async manifest(pair) {
+    pair.manifest ??= dataOf(await pair.client.callTool({ name: "_private_manifest", arguments: {} }));
+    return pair.manifest;
+  }
   async spillFile(sessionId, f, bytes) {
     return spillFile(sessionId, f, bytes);
   }
@@ -211,20 +213,21 @@ export class PrivateMcp {
         };
       await this.seed(pair, { root, inside, files });
       let input = { ...args };
+      // An adapter may name one argument per tool as a host folder to copy in as read-only input.
+      const importArgument = (await this.manifest(pair)).importDirectories?.[name];
       if (
-        server === "art-dataset" &&
-        name === "prepare_dataset" &&
-        typeof input.input_dir === "string" &&
+        typeof importArgument === "string" &&
+        typeof input[importArgument] === "string" &&
         !files.some(
           (f) =>
             inside(f.path) &&
             path
               .resolve(f.path)
               .toLowerCase()
-              .startsWith(path.resolve(input.input_dir).toLowerCase() + path.sep),
+              .startsWith(path.resolve(input[importArgument]).toLowerCase() + path.sep),
         )
       ) {
-        const source = await fs.realpath(input.input_dir);
+        const source = await fs.realpath(input[importArgument]);
         let total = 0;
         const imported = [];
         async function walk(dir, relative = "") {
@@ -247,7 +250,7 @@ export class PrivateMcp {
         }
         await walk(source);
         await this.seed(pair, { root, inside, files: imported });
-        input.input_dir = path.join(root, "input");
+        input[importArgument] = path.join(root, "input");
       }
       const result = await pair.client.callTool({ name, arguments: input }, { timeout: 1800000 });
       if (result.isError) dataOf(result);

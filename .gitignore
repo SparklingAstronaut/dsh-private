@@ -6,7 +6,7 @@ __pycache__/
 *.pyc
 .env
 .env.*
-# Local secrets and Python environments used by optional tools (for example pixiv.env)
+# Local secrets and Python environments used by optional tools (for example service.env)
 *.env
 venv/
 .venv/

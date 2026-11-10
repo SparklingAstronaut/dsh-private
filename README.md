@@ -68,11 +68,11 @@ Core chat and setup support English. Some advanced privacy and Studio dialogs cu
 **New in Preview 4:** neutral model slot names (`model-a` / `model-b`) with automatic conversion of Preview 1–3 archives, DSH Private named in the executable's version information, the DSH Private logo in the tray at every display scale, and source formatted for review with a CI formatting check. Encrypted caches, startup recovery, and public build verification from Preview 3 are retained. [View release →](https://github.com/SparklingAstronaut/dsh-private/releases/tag/v0.1.0-preview.4)
 
 <details>
-<summary><strong>Optional: images, Studio, tools, and MCP</strong></summary>
+<summary><strong>Optional: plugins, prompt skills, tools, and images</strong></summary>
 
-The app retains image/Studio, tool execution, and MCP integration code. These features require your own runtimes and configuration; the portable preview does not bundle image models, Python environments, third-party accounts, or external tools.
+DSH Private ships only the private-mode core. Like DSH, it accepts the plugins you choose to add. While private mode is open, ordinary plugin tools are paused so they cannot store your chat; a plugin takes part in private mode only through the private interfaces described in [configuration](docs/configuration.md). You can also add your own prompt skills and private document or tool adapters. Image generation in private mode needs a compatible image plugin and runtime that you install yourself.
 
-See [configuration](docs/configuration.md) for model slots, vision support, and optional integrations.
+The release does not include plugins, prompt skills, image models, Python environments, third-party accounts, or external tools.
 
 </details>
 

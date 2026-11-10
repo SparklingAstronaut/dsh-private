@@ -68,11 +68,11 @@
 **Preview 4 更新：** 模型槽位改用中性名称（`model-a` / `model-b`），Preview 1–3 的存档会自动转换；exe 的版本信息改为 DSH Private；各种显示缩放下托盘都显示 DSH Private 的图标；源码统一格式化，并加入 CI 格式检查。Preview 3 的加密缓存、启动恢复和公开构建验证继续保留。[查看此版本 →](https://github.com/SparklingAstronaut/dsh-private/releases/tag/v0.1.0-preview.4)
 
 <details>
-<summary><strong>可选功能：图片、Studio、工具与 MCP</strong></summary>
+<summary><strong>可选功能：插件、提示词、工具与生图</strong></summary>
 
-应用保留了图片/Studio、工具执行和 MCP 接入代码。这些功能需要自行配置相应运行环境；预览包不包含图片模型、Python 环境、第三方账户或外部工具。
+DSH Private 只包含无痕模式本体。和 DSH 一样，你可以自己添加想用的插件。无痕模式打开时，普通插件的工具会暂停，防止它们保存聊天内容；插件只能通过[配置说明](docs/configuration.md)里的无痕接口参与无痕模式。你也可以添加自己的提示词，以及私密的文档或工具适配器。无痕生图需要你自己安装兼容的生图插件和运行环境。
 
-模型配置、视觉输入支持和可选集成方式见[配置说明](docs/configuration.md)。
+发布包不包含插件、提示词、图片模型、Python 环境、第三方账户或外部工具。
 
 </details>
 

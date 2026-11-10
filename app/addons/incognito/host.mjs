@@ -40,8 +40,10 @@ export function apply(ctx, config = {}) {
       return { model: { a: MODEL_A, b: MODEL_B }[s?.slot] ?? null, status: s?.status ?? "stopped" };
     },
     async canEnter() {
-      if (ctx.get("localImageGpu")?.busy || (await ctx.get("privateArtPolicy")?.isBusy?.()))
-        throw Error("请先结束生图或采集任务。");
+      // Plugins may provide privateEntryGuard.isBusy() to keep private mode closed while their own
+      // normal-mode jobs are still running.
+      if (ctx.get("localImageGpu")?.busy || (await ctx.get("privateEntryGuard")?.isBusy?.()))
+        throw Error("请先结束正在进行的生图或插件任务。");
       if (ctx.agents.list().some((a) => a.status === "running")) throw Error("请先结束普通 DSH 的当前任务。");
     },
     async select(model) {

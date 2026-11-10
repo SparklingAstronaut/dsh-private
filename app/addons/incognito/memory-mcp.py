@@ -1,17 +1,34 @@
 from portable_paths import private_path
 
-"""Run the installed art MCP tools over a private, process-local filesystem."""
-import os, sys, json, base64, asyncio, logging, uuid, sqlite3, hashlib
+"""Run one private MCP tool server over a process-local, in-memory filesystem.
+
+"documents" is built in. Any other server is an adapter the user configured in settings.json under
+mcp.adapters: a Python file that defines create_server(context) and returns a FastMCP server. It is
+loaded only after the in-memory filesystem and the audit hook below are active, so it can read its
+own folder and the read-only folders listed for it, but cannot write to disk or start programs.
+"""
+import os, sys, json, base64, logging, hashlib, re, site, importlib.util
 from pathlib import Path
+from types import SimpleNamespace
 
-BASE = Path(private_path("app/addons/art-tools"))
-import site
-
-site.addsitedir(str(BASE / "venv/Lib/site-packages"))
-OWNER = os.environ.get("PRIVATE_ART_OWNER")
+MCP_SETTINGS = json.loads(os.environ.get("DSH_PRIVATE_SETTINGS", "{}")).get("mcp") or {}
+SITE_PACKAGES = MCP_SETTINGS.get("sitePackages") or ""
+if SITE_PACKAGES:
+    site.addsitedir(SITE_PACKAGES)
+OWNER = os.environ.get("PRIVATE_OWNER")
 if OWNER not in ("model-a", "model-b"):
     raise RuntimeError("Private model required")
 SERVER = sys.argv[1]
+ADAPTER_FILE = None
+ADAPTER_READ_ONLY = []
+if SERVER != "documents":
+    adapter = (MCP_SETTINGS.get("adapters") or {}).get(SERVER)
+    if not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,31}", SERVER) or not isinstance(adapter, dict):
+        raise RuntimeError("Unknown private MCP server")
+    ADAPTER_FILE = Path(str(adapter.get("file", "")))
+    if not ADAPTER_FILE.is_absolute() or ADAPTER_FILE.suffix.lower() != ".py" or not ADAPTER_FILE.is_file():
+        raise RuntimeError("Private tool adapter file is missing or invalid")
+    ADAPTER_READ_ONLY = [str(Path(p)) for p in adapter.get("readOnly", []) if Path(str(p)).is_absolute()]
 # A held process handle avoids PID-reuse races and clears in-memory data if the desktop crashes.
 if os.name == "nt" and os.environ.get("PRIVATE_PARENT_PID"):
     import ctypes, threading
@@ -28,23 +45,15 @@ if os.name == "nt" and os.environ.get("PRIVATE_PARENT_PID"):
         os._exit(0)
 
     threading.Thread(target=watch_parent, daemon=True).start()
-from dotenv import dotenv_values
-
-token = dotenv_values(BASE / "pixiv.env").get("PIXIV_REFRESH_TOKEN", "")
-os.environ["HF_HOME"] = private_path("data/art-library/cache/huggingface")
-os.environ["HF_HUB_OFFLINE"] = "1"
-if SERVER == "art-dataset":
-    import waifuc.source, waifuc.action, waifuc.export
 if SERVER == "documents":
     import pypdf, docx, openpyxl, io, zipfile, xml.etree.ElementTree
 from pyfakefs.fake_filesystem_unittest import Patcher
 
-real_roots = [
-    str(BASE),
-    sys.base_prefix,
-    str(Path(sys.executable).parent.parent),
-    private_path("data/art-library/cache"),
-]
+real_roots = [sys.base_prefix, str(Path(sys.executable).parent.parent)]
+if SITE_PACKAGES:
+    real_roots.append(SITE_PACKAGES)
+if ADAPTER_FILE:
+    real_roots += [str(ADAPTER_FILE.parent), *ADAPTER_READ_ONLY]
 patcher = Patcher()
 patcher.setUp()
 for root in sorted(set(real_roots), key=len):
@@ -54,11 +63,7 @@ ROOT = Path(private_path("private")) / OWNER
 ROOT.mkdir(parents=True, exist_ok=True)
 os.environ.update(
     PYTHONDONTWRITEBYTECODE="1",
-    PIXIV_REFRESH_TOKEN=token,
-    DOWNLOAD_PATH=str(ROOT / "pixiv"),
-    PREVIEW_PROXY_ENABLED="false",
-    PRIVATE_ART_OWNER=OWNER,
-    HF_HOME=str(ROOT / "cache/huggingface"),
+    PRIVATE_OWNER=OWNER,
     XDG_CACHE_HOME=str(ROOT / "cache"),
     TEMP=str(ROOT / "tmp"),
     TMP=str(ROOT / "tmp"),
@@ -66,7 +71,6 @@ os.environ.update(
 )
 (ROOT / "tmp").mkdir(exist_ok=True)
 logging.disable(logging.CRITICAL)
-sys.path.insert(0, str(BASE))
 
 
 def audit(event, args):
@@ -94,50 +98,8 @@ def audit(event, args):
 
 sys.excepthook = lambda kind, value, tb: sys.stderr.write(kind.__name__ + ": " + str(value) + "\n")
 sys.addaudithook(audit)
-if SERVER == "pixiv":
-    import pixiv_mcp_server.utils as pixiv_utils
-
-    pixiv_utils.check_ffmpeg = lambda: False
-    from pixiv_mcp_server.config import settings
-    from pixiv_mcp_server.state import state
-    from pixiv_mcp_server.__main__ import _initialize_server
-    from pixiv_mcp_server.tools import create_server
-
-    _initialize_server(settings, state)
-    mcp = create_server(settings, state)
-    # Downloads complete within the tool call, so no background task outlives its chat.
-    original_call = mcp._tool_manager.call_tool
-
-    async def call_and_wait(name, arguments, **kwargs):
-        value = await original_call(name, arguments, **kwargs)
-        if name == "download" and state.background_tasks:
-            await asyncio.gather(*list(state.background_tasks.values()), return_exceptions=True)
-        return value
-
-    mcp._tool_manager.call_tool = call_and_wait
-elif SERVER == "art-dataset":
-    import art_mcp as art
-
-    art.DATA = ROOT
-    art.PRIVATE_MEMORY = True
-    art.JOBS = ROOT / "jobs"
-    art.JOBS.mkdir(exist_ok=True)
-
-    # Replace the persistent job launcher with an in-process job using the same implementation.
-    def launch(kind, args):
-        jid = uuid.uuid4().hex
-        output = ROOT / ("downloads" if kind == "gallery" else "datasets") / jid
-        art.save(
-            art.JOBS / (jid + ".json"), dict(id=jid, kind=kind, state="queued", args=args, output=str(output))
-        )
-        art.worker(jid)
-        return json.loads((art.JOBS / (jid + ".json")).read_text(encoding="utf8"))
-
-    art.launch = launch
-    real_connect = sqlite3.connect
-    sqlite3.connect = lambda *args, **kwargs: real_connect(":memory:")
-    mcp = art.mcp
-elif SERVER == "documents":
+IMPORT_DIRECTORIES = {}
+if SERVER == "documents":
     from mcp.server.fastmcp import FastMCP
 
     mcp = FastMCP("Private document reader")
@@ -253,7 +215,26 @@ elif SERVER == "documents":
         }
 
 else:
-    raise RuntimeError("Unknown private MCP server")
+    # The adapter's own folder is importable, as a read-only real directory inside the sandbox.
+    sys.path.insert(0, str(ADAPTER_FILE.parent))
+    spec = importlib.util.spec_from_file_location("private_tool_adapter", ADAPTER_FILE)
+    adapter_module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(adapter_module)
+    mcp = adapter_module.create_server(SimpleNamespace(root=ROOT, owner=OWNER, private_path=private_path))
+    # Optional {tool name: argument name}: the host copies that host folder in as read-only input.
+    declared = getattr(adapter_module, "IMPORT_DIRECTORIES", {}) or {}
+    if not isinstance(declared, dict) or not all(
+        isinstance(k, str) and isinstance(v, str) and re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]{0,63}", v)
+        for k, v in declared.items()
+    ):
+        raise RuntimeError("Private tool adapter IMPORT_DIRECTORIES is invalid")
+    IMPORT_DIRECTORIES = dict(declared)
+
+
+@mcp.tool()
+def _private_manifest() -> dict:
+    """Host-only: tool arguments that name a host folder to import as input."""
+    return {"importDirectories": IMPORT_DIRECTORIES}
 
 
 @mcp.tool()

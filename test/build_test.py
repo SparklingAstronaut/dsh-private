@@ -59,7 +59,7 @@ class BuildTests(unittest.TestCase):
             (root / "app").mkdir()
             (root / "app" / "notes.txt").write_text("SYNTHETIC")
             self.assertEqual(scan(root, [])[1], [])
-            (root / "app" / "pixiv.env").write_text("SYNTHETIC_TOKEN=1")
+            (root / "app" / "service.env").write_text("SYNTHETIC_TOKEN=1")
             (root / "app" / ".env.production").write_text("SYNTHETIC=1")
             (root / "app" / "venv").mkdir()
             (root / "app" / "venv" / "pyvenv.cfg").write_text("home = synthetic")
