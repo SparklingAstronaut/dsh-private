@@ -15,7 +15,11 @@ def private_path(value):
     base = {
         "app": root,
         "data": data,
-        "private": data / "private",
+        "private": (
+            Path(settings["privateRoot"])
+            if isinstance(settings.get("privateRoot"), str) and Path(settings["privateRoot"]).is_absolute()
+            else data / "private"
+        ),
         "image": Path(settings.get("imageRoot", data / "optional-image-runtime")),
     }.get(kind)
     if base is None:

@@ -7,6 +7,12 @@ export const dataRoot = path.resolve(
   process.env.DSH_PRIVATE_DATA_ROOT || path.join(process.env.LOCALAPPDATA || os.homedir(), "DSH-Private"),
 );
 export const settings = JSON.parse(process.env.DSH_PRIVATE_SETTINGS || "{}");
+// Encrypted archives and private working folders. settings.json "privateRoot" may keep them on
+// another drive; if that drive is missing, private mode stays locked instead of falling back.
+export const privateRoot =
+  typeof settings.privateRoot === "string" && path.isAbsolute(settings.privateRoot)
+    ? path.resolve(settings.privateRoot)
+    : path.join(dataRoot, "private");
 export const modelAliases = {
   [MODEL_A]: settings.modelA || "local-model-a",
   [MODEL_B]: settings.modelB || settings.modelA || "local-model-b",
@@ -32,13 +38,7 @@ export function resolvePrivatePath(value) {
     return path.join(settings.imageRoot || path.join(dataRoot, "optional-image-runtime"), value.slice(6));
   const [kind, ...parts] = value.split("/");
   const base =
-    kind === "app"
-      ? appRoot
-      : kind === "private"
-        ? path.join(dataRoot, "private")
-        : kind === "data"
-          ? dataRoot
-          : null;
+    kind === "app" ? appRoot : kind === "private" ? privateRoot : kind === "data" ? dataRoot : null;
   if (!base) throw Error("Unknown private path namespace");
   const result = path.resolve(base, ...parts),
     relative = path.relative(base, result);

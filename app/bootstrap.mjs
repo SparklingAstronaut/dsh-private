@@ -19,12 +19,18 @@ process.env.DSH_TELEMETRY_DISABLED = "1";
 process.env[LOCAL_API_KEY_ENV] = "local-only";
 process.env.PYTHONDONTWRITEBYTECODE = "1";
 process.env.PYTHONPATH = path.join(root, "python");
-for (const name of ["host", "empty-home", "workspace", "temp", "private"])
+for (const name of ["host", "empty-home", "workspace", "temp"])
   fs.mkdirSync(path.join(data, name), { recursive: true });
+// A custom privateRoot may be on a drive that is not connected; private mode then stays locked.
+const privateRoot =
+  typeof config.privateRoot === "string" && path.isAbsolute(config.privateRoot)
+    ? path.resolve(config.privateRoot)
+    : path.join(data, "private");
+if (privateRoot === path.join(data, "private")) fs.mkdirSync(privateRoot, { recursive: true });
 // Preview 1-3 named the owner-specific private folders after the old model slots.
 for (const [legacy, slot] of LEGACY_SLOT_FOLDERS) {
-  const from = path.join(data, "private", legacy),
-    to = path.join(data, "private", slot);
+  const from = path.join(privateRoot, legacy),
+    to = path.join(privateRoot, slot);
   try {
     if (fs.existsSync(from) && !fs.existsSync(to)) fs.renameSync(from, to);
   } catch {
@@ -39,12 +45,15 @@ app.setPath("userData", path.join(data, "electron"));
 app.setPath("logs", path.join(data, "logs"));
 const { privateModelSettings, hostPlugins } = await import("./model-config.mjs");
 const provider = privateModelSettings()["llm-pi-ai"].providers[LOCAL_PROVIDER];
+// With "provider" set, private chats reuse that normal-mode provider (see host.mjs), so the
+// built-in "Local model" entry is not added to normal mode as well.
+const reuseProvider = typeof config.provider === "string";
 const overlay = [
   {
     id: "desktop-shell",
     config: { port: 43219, networkExposure: "loopback", openBrowser: false, mode: "compatibility" },
   },
-  { id: "llm-pi-ai", config: { providers: { [LOCAL_PROVIDER]: provider } } },
+  ...(reuseProvider ? [] : [{ id: "llm-pi-ai", config: { providers: { [LOCAL_PROVIDER]: provider } } }]),
   { id: "locale", config: privateModelSettings().locale },
   { id: "permission", config: { defaultPreset: "workspace-write" } },
   { id: "session-telemetry-otel", disabled: true },

@@ -13,7 +13,9 @@ Optional integrations are retained as source but not automatically configured in
 
 Do not copy another user's `settings.json`, credentials, plugins, or vault into a public distribution. The application does not auto-import data from official DSH or earlier custom installations.
 
-`DSH_PRIVATE_DATA_ROOT` selects a different data directory before launch, for example to keep archives on another drive. Set it before starting the app and keep it the same afterwards.
+`DSH_PRIVATE_DATA_ROOT` selects a different data directory before launch. Set it before starting the app and keep it the same afterwards. To keep only the encrypted archives and private working folders elsewhere, for example on an external drive, set `"privateRoot"` in `settings.json` to an absolute folder. If that drive is not connected, private mode stays locked; normal mode still starts.
+
+If a local model provider is already configured in DSH, for example by a local model plugin, set `"provider"` to its ID to reuse it for private chats. The core copies its settings (model names, context sizes, reasoning options) for Model A and Model B only. Its base URL must equal the loopback URL in Connection, and the built-in "Local model" entry is then not added to normal mode.
 
 ## Plugins
 

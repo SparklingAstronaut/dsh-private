@@ -1,4 +1,4 @@
-import { privateModelSettings } from "../../model-config.mjs";
+import { privateModelSettings, reusedProviderSettings } from "../../model-config.mjs";
 import { modelAliases, settings, resolvePrivatePath } from "../../portable-paths.mjs";
 import { MODEL_A, MODEL_B, normalizeModelSlot } from "../../model-slots.mjs";
 import { fileURLToPath } from "node:url";
@@ -33,7 +33,9 @@ export function apply(ctx, config = {}) {
       return ctx.get("web").search(request, signal);
     },
     privateSettings() {
-      return privateModelSettings();
+      return typeof settings.provider === "string"
+        ? reusedProviderSettings(ctx.settings.describe())
+        : privateModelSettings();
     },
     status() {
       const s = state();

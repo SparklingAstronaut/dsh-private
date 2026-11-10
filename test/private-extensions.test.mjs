@@ -5,6 +5,9 @@ import os from "node:os";
 import path from "node:path";
 import { loadSkills } from "../app/addons/incognito/prompt-skills.mjs";
 import { privateServers, validAdapter } from "../app/addons/incognito/private-tool-config.mjs";
+import { execFileSync } from "node:child_process";
+
+const portablePaths = new URL("../app/portable-paths.mjs", import.meta.url).href;
 
 const skill = (name, body = "Synthetic instructions.") =>
   `---\nname: ${name}\ndescription: Synthetic skill\nwhenToUse: Synthetic hint\n---\n${body}\n`;
@@ -234,4 +237,57 @@ test("a plugin can take over local model management", async () => {
     ["incognito-host"],
   );
   assert.equal(hostPlugins(root, {})[1].name, path.join(root, "addons/incognito/host.mjs"));
+});
+
+test("private chats can reuse a loopback provider configured in DSH", async () => {
+  const { reusedProviderSettings } = await import("../app/model-config.mjs");
+  const { LOCAL_PROVIDER, LOCAL_API_KEY_ENV } = await import("../app/model-slots.mjs");
+  const describe = (provider) => [{ ns: "llm-pi-ai", user: { providers: { "my-local": provider } } }];
+  const provider = {
+    baseURL: "http://127.0.0.1:1234/v1/",
+    apiKeyEnv: "MY_LOCAL_KEY",
+    compat: { thinkingFormat: "deepseek" },
+    models: [
+      { id: "local-model-a", contextWindow: 131072 },
+      { id: "other-model", contextWindow: 8192 },
+    ],
+  };
+  const reused = reusedProviderSettings(describe(provider), "my-local")["llm-pi-ai"].providers[
+    LOCAL_PROVIDER
+  ];
+  assert.deepEqual(
+    reused.models.map((m) => m.id),
+    ["local-model-a"],
+  );
+  assert.equal(reused.models[0].contextWindow, 131072);
+  assert.equal(reused.compat.thinkingFormat, "deepseek");
+  assert.equal(reused.apiKeyEnv, LOCAL_API_KEY_ENV);
+  assert.equal(provider.apiKeyEnv, "MY_LOCAL_KEY");
+  assert.throws(() => reusedProviderSettings(describe(provider), "missing"), /not configured/);
+  assert.throws(
+    () =>
+      reusedProviderSettings(describe({ ...provider, baseURL: "http://192.168.1.5:1234/v1" }), "my-local"),
+    /Connection URL/,
+  );
+  assert.throws(
+    () => reusedProviderSettings(describe({ ...provider, models: [{ id: "other-model" }] }), "my-local"),
+    /Model A or Model B/,
+  );
+});
+
+test("privateRoot keeps private folders on another drive without escaping it", () => {
+  const custom = path.resolve(os.tmpdir(), "dsh-private-root-test", "Private");
+  const script =
+    'const { resolvePrivatePath, privateRoot } = await import(process.argv[1]); console.log(JSON.stringify([privateRoot, resolvePrivatePath("private/Incognito")]));';
+  const run = (settings) =>
+    JSON.parse(
+      execFileSync(process.execPath, ["--input-type=module", "-e", script, portablePaths], {
+        encoding: "utf8",
+        env: { ...process.env, DSH_PRIVATE_SETTINGS: JSON.stringify(settings) },
+      }),
+    );
+  assert.deepEqual(run({ privateRoot: custom }), [custom, path.join(custom, "Incognito")]);
+  const fallback = run({ privateRoot: "relative/folder" });
+  assert.notEqual(fallback[0], path.resolve("relative/folder"));
+  assert.equal(path.basename(fallback[0]), "private");
 });
