@@ -34,8 +34,6 @@ export const modelBaseUrl = validateModelUrl(settings.baseUrl || "http://127.0.0
 export const localModelUrl = (suffix) => modelBaseUrl + suffix;
 export function resolvePrivatePath(value) {
   if (value === "node") return path.join(appRoot, "runtime/node.exe");
-  if (value === "image" || value.startsWith("image/"))
-    return path.join(settings.imageRoot || path.join(dataRoot, "optional-image-runtime"), value.slice(6));
   const [kind, ...parts] = value.split("/");
   const base =
     kind === "app" ? appRoot : kind === "private" ? privateRoot : kind === "data" ? dataRoot : null;

@@ -6,7 +6,6 @@ Advanced settings live in `%APPDATA%\DSH-Private\settings.json`. Close the app b
 
 Optional integrations are retained as source but not automatically configured in this preview:
 
-- `imageRoot` may point to the user's compatible local image runtime, including its own `python_embeded/python.exe` and model setup. Image model/server downloads are not included.
 - `mcp.python`, `mcp.sitePackages`, and `mcp.servers` enable private tool servers in a user-owned Python environment. The default server list is empty. See [Private tool adapters](#private-tool-adapters).
 - Private Studio (image generation in private mode) needs an image plugin that provides the services listed under [Plugins](#plugins), your own ComfyUI installation, and an explicitly prepared `private-studio.json` inside the app's data directory. See [Private Studio](#private-studio). Encrypted images must stay with their matching vault.
 - Shell/PTC execution requires the corresponding OS tools. External writes/tools are not a zero-trace environment.
@@ -42,6 +41,7 @@ DSH Private is DSH with a private-mode core, so DSH plugins can be added to its 
   "pythonExe": "C:/ComfyUI/python_embeded/python.exe",
   "pythonSha256": "<sha256 of python.exe>",
   "storagePolicy": "D:/PrivateStudio/storage-policy.json",
+  "allowInitialCreate": true,
   "comfyDir": "C:/ComfyUI/ComfyUI",
   "pythonPaths": ["C:/ComfyUI/deps"],
   "extraModelPaths": ["C:/ComfyUI/extra_model_paths.yaml"]
@@ -52,6 +52,7 @@ DSH Private is DSH with a private-mode core, so DSH plugins can be added to its 
 - `pythonPaths` (optional) are added in front of Python's search path, for example a folder of extra packages.
 - `extraModelPaths` (optional) are passed to ComfyUI as `--extra-model-paths-config`.
 - `assetRoot` holds encrypted images; `mountRoot` holds the encrypted temporary workspace that is mounted as `mountDrive` during a job. They must be separate folders and not on the mount drive.
+- `allowInitialCreate: true` lets the app create the encrypted image store and its key the first time a vault uses Studio. Without it, Studio only opens a store that already exists.
 - `storagePolicy` is a file you create after testing the storage: `status` `"verified"`, `writeReadbackPassed` and `deviceErrorsReviewed` `true`, a `verifiedAt` date, and the same `assetRoot` and `mountRoot`. New image jobs are blocked until it matches.
 
 The image plugin decides which workflows exist and checks that their models are installed. Its `privateStudioCompiler.describe()` returns the catalog used by the private image window and the `generate_image` tool:

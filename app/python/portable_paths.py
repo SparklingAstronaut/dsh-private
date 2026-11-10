@@ -20,7 +20,6 @@ def private_path(value):
             if isinstance(settings.get("privateRoot"), str) and Path(settings["privateRoot"]).is_absolute()
             else data / "private"
         ),
-        "image": Path(settings.get("imageRoot", data / "optional-image-runtime")),
     }.get(kind)
     if base is None:
         raise ValueError("Unknown private path namespace")
