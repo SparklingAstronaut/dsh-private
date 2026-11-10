@@ -34,7 +34,7 @@ python -m pip install black==24.10.0
 python -m black app scripts test
 ```
 
-To check without changing files, run `npm run format:check` and `python -m black --check app scripts test`.
+To check without changing files, run `npm run format:check` and `python -m black --check app scripts test`. CI runs the same checks.
 
 ## Run the checks
 
