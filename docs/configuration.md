@@ -2,7 +2,7 @@
 
 The password gate's Connection panel sets `baseUrl`, `modelA`, `modelB`, and `locale` (`en-US` or `zh-CN`). Model IDs must exactly match `/models` from the user's running local server. Model A and B may use the same ID. Internally the slots are `model-a` and `model-b`; archives written by Preview 1–3 used the names Heretic and QQZ and are read as Model A and Model B. The underlying model IDs are user-configured.
 
-Advanced settings live in `%APPDATA%\DSH-Private\settings.json`. Close the app before manual editing. `vision: true` advertises image input only if your selected local model supports it. Do not store credentials here; the built-in chat connector requires no remote API keys.
+Advanced settings live in `%APPDATA%\DSH-Private\settings.json`. Close the app before manual editing. `vision: true` advertises image input only if your selected local model supports it. `contextWindow` (default 32768) and `maxTokens` (default 4096) should match what your local server allows. Do not store credentials here; the built-in chat connector requires no remote API keys.
 
 Optional integrations are retained as source but not automatically configured in this preview:
 
@@ -22,6 +22,7 @@ DSH Private is DSH with a private-mode core, so DSH plugins can be added to its 
 - `localImageGpu` with `runPrivate()`, `retryRecovery()` and `busy`: hands the GPU between the chat model and private image jobs.
 - `privateStudioCompiler` with `describe()` and `prepare()`: supplies image workflows for private Studio. The core runs them in an encrypted workspace, encrypts the results and keeps them in the vault's private gallery.
 - `privateEntryGuard` with `isBusy()`: keeps private mode closed while the plugin's own normal-mode job is still running.
+- `localIncognitoEngine` with `snapshot()`, `selectPrivate(slot)`, `isPrivate()`, `activity()` and `stop()`: starts and stops local models for private mode. The built-in engine only checks that your server already serves the model. To let a plugin manage models instead, set `"modelEngine": "plugin"` in `settings.json`. Private chats still go only to the loopback server set in Connection.
 
 ## Private Studio
 

@@ -221,3 +221,17 @@ test("workflow options passed to the image plugin are plain bounded values", asy
     fs.rmSync(root, { recursive: true, force: true });
   }
 });
+
+test("a plugin can take over local model management", async () => {
+  const { hostPlugins } = await import("../app/model-config.mjs");
+  const root = path.resolve(os.tmpdir(), "app");
+  assert.deepEqual(
+    hostPlugins(root, {}).map((plugin) => plugin.id),
+    ["private-model-connection", "incognito-host"],
+  );
+  assert.deepEqual(
+    hostPlugins(root, { modelEngine: "plugin" }).map((plugin) => plugin.id),
+    ["incognito-host"],
+  );
+  assert.equal(hostPlugins(root, {})[1].name, path.join(root, "addons/incognito/host.mjs"));
+});

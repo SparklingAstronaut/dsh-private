@@ -37,7 +37,7 @@ process.chdir(path.join(data, "workspace"));
 app.setName("DSH Private");
 app.setPath("userData", path.join(data, "electron"));
 app.setPath("logs", path.join(data, "logs"));
-const { privateModelSettings } = await import("./model-config.mjs");
+const { privateModelSettings, hostPlugins } = await import("./model-config.mjs");
 const provider = privateModelSettings()["llm-pi-ai"].providers[LOCAL_PROVIDER];
 const overlay = [
   {
@@ -49,12 +49,7 @@ const overlay = [
   { id: "permission", config: { defaultPreset: "workspace-write" } },
   { id: "session-telemetry-otel", disabled: true },
   { id: "desktop-updates", disabled: true },
-  {
-    insert: [
-      { id: "private-model-connection", name: path.join(root, "model-engine.mjs") },
-      { id: "incognito-host", name: path.join(root, "addons/incognito/host.mjs") },
-    ],
-  },
+  { insert: hostPlugins(root, config) },
 ];
 fs.writeFileSync(path.join(data, "host/cordis.patch.yml"), JSON.stringify(overlay, null, 2));
 const presetSource = path.join(root, "addons/incognito/presets"),
