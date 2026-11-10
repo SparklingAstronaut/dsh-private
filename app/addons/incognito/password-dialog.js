@@ -1,2 +1,70 @@
-(()=>{if(document.getElementById('dsh-private-password'))return;const dialog=document.createElement('dialog');dialog.id='dsh-private-password';const style=document.createElement('style');style.textContent=`#dsh-private-password{box-sizing:border-box;font:14px/1.6 inherit;color:var(--dsw-alias-label-primary,#ececec);background:var(--dsw-alias-bg-layer-2,#28282b);border:1px solid var(--dsw-alias-border-l1,#414144);border-radius:24px;padding:28px;width:420px;max-width:calc(100vw - 32px)}#dsh-private-password::backdrop{background:#0007;backdrop-filter:blur(3px)}#dsh-private-password h2{margin:0 0 6px;font-size:20px;font-weight:600}#dsh-private-password p{color:var(--dsw-alias-label-secondary,#aaa);font-size:13px}#dsh-private-password label{display:block;margin:16px 0 0}#dsh-private-password input{box-sizing:border-box;display:block;width:100%;margin-top:6px;padding:12px;font:inherit;color:inherit;background:var(--dsw-alias-bg-base,#1b1b1c);border:1px solid var(--dsw-alias-border-l1,#414144);border-radius:12px}#dsh-private-password button{font:inherit;border:0;border-radius:12px;padding:10px 18px;cursor:pointer;background:var(--dsw-alias-bg-base,#19191a);color:inherit}#dsh-private-password button[type=submit]{background:var(--dsw-alias-label-primary,#eee);color:var(--dsw-alias-bg-base,#222)}#dsh-private-password .actions{display:flex;justify-content:flex-end;gap:10px;margin-top:20px}#dsh-private-password .error{color:#f68b83;min-height:20px}#dsh-private-password :focus-visible{outline:2px solid #8b9dc8;outline-offset:2px}#dsh-private-password button:disabled{opacity:.5}`;
-const title=document.createElement('h2');title.textContent='修改密码';const hint=document.createElement('p');hint.textContent='新密码用于解锁 本机加密目录中已保存的聊天。';const form=document.createElement('form');form.autocomplete='off';const inputs=[];for(const text of ['当前密码','新密码（至少 12 个字符）','再次输入新密码']){const label=document.createElement('label');label.textContent=text;const input=document.createElement('input');input.type='password';input.autocomplete='off';input.required=true;input.maxLength=256;if(inputs.length)input.minLength=12;label.append(input);inputs.push(input);form.append(label);}const notice=document.createElement('p');notice.className='error';notice.setAttribute('role','status');const save=document.createElement('button');save.type='submit';save.textContent='修改密码';const cancel=document.createElement('button');cancel.type='button';cancel.textContent='取消';const dispose=()=>{inputs.forEach(i=>i.value='');dialog.remove();};cancel.onclick=dispose;dialog.addEventListener('cancel',dispose);form.onsubmit=async e=>{e.preventDefault();if(inputs[1].value!==inputs[2].value){notice.textContent='两次新密码不一致。';return;}save.disabled=true;try{const r=await window.incognito.call('password',{oldPassword:inputs[0].value,newPassword:inputs[1].value});if(r.ok)dispose();else notice.textContent=r.error;}catch{notice.textContent='暂时无法修改密码，请重试。';}finally{save.disabled=false;}};const actions=document.createElement('div');actions.className='actions';actions.append(cancel,save);form.append(notice,actions);dialog.append(style,title,hint,form);document.body.append(dialog);dialog.showModal();inputs[0].focus();})();
+(() => {
+  if (document.getElementById("dsh-private-password")) return;
+  const dialog = document.createElement("dialog");
+  dialog.id = "dsh-private-password";
+  const style = document.createElement("style");
+  style.textContent = `#dsh-private-password{box-sizing:border-box;font:14px/1.6 inherit;color:var(--dsw-alias-label-primary,#ececec);background:var(--dsw-alias-bg-layer-2,#28282b);border:1px solid var(--dsw-alias-border-l1,#414144);border-radius:24px;padding:28px;width:420px;max-width:calc(100vw - 32px)}#dsh-private-password::backdrop{background:#0007;backdrop-filter:blur(3px)}#dsh-private-password h2{margin:0 0 6px;font-size:20px;font-weight:600}#dsh-private-password p{color:var(--dsw-alias-label-secondary,#aaa);font-size:13px}#dsh-private-password label{display:block;margin:16px 0 0}#dsh-private-password input{box-sizing:border-box;display:block;width:100%;margin-top:6px;padding:12px;font:inherit;color:inherit;background:var(--dsw-alias-bg-base,#1b1b1c);border:1px solid var(--dsw-alias-border-l1,#414144);border-radius:12px}#dsh-private-password button{font:inherit;border:0;border-radius:12px;padding:10px 18px;cursor:pointer;background:var(--dsw-alias-bg-base,#19191a);color:inherit}#dsh-private-password button[type=submit]{background:var(--dsw-alias-label-primary,#eee);color:var(--dsw-alias-bg-base,#222)}#dsh-private-password .actions{display:flex;justify-content:flex-end;gap:10px;margin-top:20px}#dsh-private-password .error{color:#f68b83;min-height:20px}#dsh-private-password :focus-visible{outline:2px solid #8b9dc8;outline-offset:2px}#dsh-private-password button:disabled{opacity:.5}`;
+  const title = document.createElement("h2");
+  title.textContent = "修改密码";
+  const hint = document.createElement("p");
+  hint.textContent = "新密码用于解锁 本机加密目录中已保存的聊天。";
+  const form = document.createElement("form");
+  form.autocomplete = "off";
+  const inputs = [];
+  for (const text of ["当前密码", "新密码（至少 12 个字符）", "再次输入新密码"]) {
+    const label = document.createElement("label");
+    label.textContent = text;
+    const input = document.createElement("input");
+    input.type = "password";
+    input.autocomplete = "off";
+    input.required = true;
+    input.maxLength = 256;
+    if (inputs.length) input.minLength = 12;
+    label.append(input);
+    inputs.push(input);
+    form.append(label);
+  }
+  const notice = document.createElement("p");
+  notice.className = "error";
+  notice.setAttribute("role", "status");
+  const save = document.createElement("button");
+  save.type = "submit";
+  save.textContent = "修改密码";
+  const cancel = document.createElement("button");
+  cancel.type = "button";
+  cancel.textContent = "取消";
+  const dispose = () => {
+    inputs.forEach((i) => (i.value = ""));
+    dialog.remove();
+  };
+  cancel.onclick = dispose;
+  dialog.addEventListener("cancel", dispose);
+  form.onsubmit = async (e) => {
+    e.preventDefault();
+    if (inputs[1].value !== inputs[2].value) {
+      notice.textContent = "两次新密码不一致。";
+      return;
+    }
+    save.disabled = true;
+    try {
+      const r = await window.incognito.call("password", {
+        oldPassword: inputs[0].value,
+        newPassword: inputs[1].value,
+      });
+      if (r.ok) dispose();
+      else notice.textContent = r.error;
+    } catch {
+      notice.textContent = "暂时无法修改密码，请重试。";
+    } finally {
+      save.disabled = false;
+    }
+  };
+  const actions = document.createElement("div");
+  actions.className = "actions";
+  actions.append(cancel, save);
+  form.append(notice, actions);
+  dialog.append(style, title, hint, form);
+  document.body.append(dialog);
+  dialog.showModal();
+  inputs[0].focus();
+})();

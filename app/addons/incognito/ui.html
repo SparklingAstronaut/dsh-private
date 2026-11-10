@@ -1,11 +1,92 @@
-<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'none'; connect-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'"><meta name="viewport" content="width=device-width,initial-scale=1"><title>无痕模式</title><link rel="stylesheet" href="ui.css"></head><body>
-<header><strong>无痕模式</strong><span id="badge">已锁定</span><button id="exit">退出并锁定 → 普通模式</button></header>
-<div id="notice" role="status"></div>
-<section id="gate"><h1>私密聊天，只在你选择时保存。</h1><p>临时聊天留在内存；保存的聊天加密存于 本机加密目录。密码无法找回。</p>
-<div id="setup" hidden><button id="prepare">生成初始密码</button><div id="initial" hidden><p>请先将初始密码保存在安全位置。此处不会重复显示。</p><code id="generated"></code><button id="confirm">我已记下密码，创建加密存储</button></div></div>
-<form id="unlockForm" autocomplete="off"><label>密码<input id="password" type="password" autocomplete="off" spellcheck="false" required></label><button type="submit">解锁</button></form>
-<p class="small">无痕不等于取证级零痕迹：Windows 内存、分页文件和系统残留不在应用保证范围内。</p></section>
-<main id="workspace" hidden><aside><div class="row"><select id="model"><option>Heretic</option><option>QQZ</option></select><button id="new">新聊天</button></div><button id="start">启动所选模型</button><p id="engine" class="small"></p><div id="chats"></div><button id="change">修改密码</button><p class="small">生图、采集与文件工具暂不可用：尚未配置加密工作盘。不会改用明文目录。</p></aside>
-<article><div class="row"><h2 id="title">选择或新建聊天</h2><button id="save" disabled>保存此聊天</button><button id="delete" disabled>永久删除</button></div><p id="retention" class="small"></p><div id="messages"></div><form id="sendForm" autocomplete="off"><textarea id="text" rows="3" maxlength="32000" spellcheck="false" placeholder="只发送给本地 Heretic / QQZ" required></textarea><button id="send" type="submit">发送</button></form></article></main>
-<dialog id="passwordDialog"><form id="changeForm" autocomplete="off"><h2>修改密码</h2><label>当前密码<input id="oldPassword" type="password" autocomplete="off" required></label><label>新密码（至少 12 个字符）<input id="newPassword" type="password" autocomplete="off" minlength="12" required></label><label>再次输入新密码<input id="repeatPassword" type="password" autocomplete="off" minlength="12" required></label><button type="submit">修改</button><button id="cancelPassword" type="button">取消</button></form></dialog>
-<script src="ui.js"></script></body></html>
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'none'; connect-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'"
+    />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>无痕模式</title>
+    <link rel="stylesheet" href="ui.css" />
+  </head>
+  <body>
+    <header>
+      <strong>无痕模式</strong><span id="badge">已锁定</span><button id="exit">退出并锁定 → 普通模式</button>
+    </header>
+    <div id="notice" role="status"></div>
+    <section id="gate">
+      <h1>私密聊天，只在你选择时保存。</h1>
+      <p>临时聊天留在内存；保存的聊天加密存于 本机加密目录。密码无法找回。</p>
+      <div id="setup" hidden>
+        <button id="prepare">生成初始密码</button>
+        <div id="initial" hidden>
+          <p>请先将初始密码保存在安全位置。此处不会重复显示。</p>
+          <code id="generated"></code><button id="confirm">我已记下密码，创建加密存储</button>
+        </div>
+      </div>
+      <form id="unlockForm" autocomplete="off">
+        <label
+          >密码<input id="password" type="password" autocomplete="off" spellcheck="false" required /></label
+        ><button type="submit">解锁</button>
+      </form>
+      <p class="small">无痕不等于取证级零痕迹：Windows 内存、分页文件和系统残留不在应用保证范围内。</p>
+    </section>
+    <main id="workspace" hidden>
+      <aside>
+        <div class="row">
+          <select id="model">
+            <option>Heretic</option>
+            <option>QQZ</option></select
+          ><button id="new">新聊天</button>
+        </div>
+        <button id="start">启动所选模型</button>
+        <p id="engine" class="small"></p>
+        <div id="chats"></div>
+        <button id="change">修改密码</button>
+        <p class="small">生图、采集与文件工具暂不可用：尚未配置加密工作盘。不会改用明文目录。</p>
+      </aside>
+      <article>
+        <div class="row">
+          <h2 id="title">选择或新建聊天</h2>
+          <button id="save" disabled>保存此聊天</button><button id="delete" disabled>永久删除</button>
+        </div>
+        <p id="retention" class="small"></p>
+        <div id="messages"></div>
+        <form id="sendForm" autocomplete="off">
+          <textarea
+            id="text"
+            rows="3"
+            maxlength="32000"
+            spellcheck="false"
+            placeholder="只发送给本地 Heretic / QQZ"
+            required
+          ></textarea
+          ><button id="send" type="submit">发送</button>
+        </form>
+      </article>
+    </main>
+    <dialog id="passwordDialog">
+      <form id="changeForm" autocomplete="off">
+        <h2>修改密码</h2>
+        <label>当前密码<input id="oldPassword" type="password" autocomplete="off" required /></label
+        ><label
+          >新密码（至少 12 个字符）<input
+            id="newPassword"
+            type="password"
+            autocomplete="off"
+            minlength="12"
+            required /></label
+        ><label
+          >再次输入新密码<input
+            id="repeatPassword"
+            type="password"
+            autocomplete="off"
+            minlength="12"
+            required /></label
+        ><button type="submit">修改</button><button id="cancelPassword" type="button">取消</button>
+      </form>
+    </dialog>
+    <script src="ui.js"></script>
+  </body>
+</html>

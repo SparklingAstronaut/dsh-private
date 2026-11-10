@@ -24,6 +24,18 @@ The output is `dist/DSH-Private`. The builder downloads the upstream archive lis
 
 To reuse an already extracted copy, pass `--desktop-source "<unpacked-desktop-folder>"`. Its entire file tree must match the pinned archive; a matching version string alone is not accepted. Updating upstream means reviewing and updating both fingerprints and rerunning the integration checks.
 
+## Formatting
+
+Source files are formatted with Prettier (JavaScript, CSS, HTML) and Black (Python) so every change stays reviewable. `desktop-overrides/` is excluded because it must stay comparable with the upstream compiled modules.
+
+```powershell
+npm run format
+python -m pip install black==24.10.0
+python -m black app scripts test
+```
+
+To check without changing files, run `npm run format:check` and `python -m black --check app scripts test`.
+
 ## Run the checks
 
 Run the focused privacy and portability regressions:

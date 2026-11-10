@@ -1,1 +1,1 @@
-export function apply(){}
+export function apply() {}

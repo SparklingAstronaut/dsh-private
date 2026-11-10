@@ -1,0 +1,10 @@
+# Compiled upstream modules must stay byte-for-byte comparable with DSH Desktop.
+desktop-overrides/
+# Markdown, YAML presets and JSON data are maintained by hand.
+*.md
+*.yml
+*.yaml
+*.json
+dist/
+node_modules/
+.cache/

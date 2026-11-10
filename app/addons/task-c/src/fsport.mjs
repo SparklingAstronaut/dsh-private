@@ -1,6 +1,6 @@
 // 注入式文件系统端口：生产用 node:fs；测试注入故障（ENOSPC/EROFS/EIO/断连）。
-import fs from 'node:fs';
-import path from 'node:path';
+import fs from "node:fs";
+import path from "node:path";
 
 export const realFs = {
   mkdirSync: (p, o) => fs.mkdirSync(p, o),
@@ -39,7 +39,9 @@ export class FlakyFs {
   }
 }
 for (const op of Object.keys(realFs)) {
-  FlakyFs.prototype[op] = function (...args) { return this._wrap(op)(...args); };
+  FlakyFs.prototype[op] = function (...args) {
+    return this._wrap(op)(...args);
+  };
 }
 
 export const err = (code, msg) => Object.assign(new Error(msg ?? code), { code });
@@ -48,38 +50,60 @@ export function ensureDir(fsp, p) {
   if (!fsp.existsSync(p)) fsp.mkdirSync(p, { recursive: true });
 }
 
-export function join(...parts) { return path.join(...parts); }
+export function join(...parts) {
+  return path.join(...parts);
+}
 
 // Check each existing component rather than resolving away junctions. This
 // guards accidental/malicious static links, not hostile concurrent OS mutation.
 export function confinedFs(root, base = realFs) {
   const anchor = path.resolve(root);
   function check(value) {
-    if (typeof value !== 'string') throw err('unsafe-path', 'Path must be a string');
+    if (typeof value !== "string") throw err("unsafe-path", "Path must be a string");
     const target = path.resolve(value);
     const relative = path.relative(anchor, target);
-    if (relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
-      throw err('unsafe-path', 'Path is outside managed storage');
+    if (relative === ".." || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
+      throw err("unsafe-path", "Path is outside managed storage");
     }
     const volume = path.parse(target).root;
     let current = volume;
     for (const part of target.slice(volume.length).split(path.sep).filter(Boolean)) {
       current = path.join(current, part);
       try {
-        if (base.lstatSync(current).isSymbolicLink()) throw err('unsafe-path', 'Storage links are not allowed');
+        if (base.lstatSync(current).isSymbolicLink())
+          throw err("unsafe-path", "Storage links are not allowed");
       } catch (e) {
-        if (e.code === 'ENOENT') break;
+        if (e.code === "ENOENT") break;
         throw e;
       }
     }
     return target;
   }
-  const single = new Set(['mkdirSync', 'writeFileSync', 'appendFileSync', 'readFileSync', 'unlinkSync',
-    'rmSync', 'readdirSync', 'statSync', 'lstatSync', 'existsSync', 'openSync']);
-  const dual = new Set(['renameSync', 'copyFileSync']);
-  return Object.fromEntries(Object.keys(realFs).map(op => [op, (...args) => {
-    if (single.has(op)) check(args[0]);
-    if (dual.has(op)) { check(args[0]); check(args[1]); }
-    return base[op](...args);
-  }]));
+  const single = new Set([
+    "mkdirSync",
+    "writeFileSync",
+    "appendFileSync",
+    "readFileSync",
+    "unlinkSync",
+    "rmSync",
+    "readdirSync",
+    "statSync",
+    "lstatSync",
+    "existsSync",
+    "openSync",
+  ]);
+  const dual = new Set(["renameSync", "copyFileSync"]);
+  return Object.fromEntries(
+    Object.keys(realFs).map((op) => [
+      op,
+      (...args) => {
+        if (single.has(op)) check(args[0]);
+        if (dual.has(op)) {
+          check(args[0]);
+          check(args[1]);
+        }
+        return base[op](...args);
+      },
+    ]),
+  );
 }

@@ -1,1 +1,65 @@
-<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none';script-src 'self';style-src 'self';img-src 'self';connect-src 'none';base-uri 'none';form-action 'none'"><title>DSH Private</title><link rel="stylesheet" href="gate.css"></head><body><main class="gate"><section class="card" aria-labelledby="title"><img class="brand-logo" src="official-logo.png" alt="DeepSeek"><h1 id="title">DSH Private</h1><p class="subtitle">输入密码，继续你的私密聊天。</p><div id="setup" hidden><button id="prepare" class="primary">生成初始密码</button><div id="initial" hidden><p>请妥善保存此密码，遗失后无法找回。</p><code id="generated"></code><button id="confirm" class="primary">已记下，创建密码</button></div></div><form id="unlockForm" autocomplete="off" hidden><label for="password">密码</label><div class="password-field"><input id="password" type="password" autocomplete="off" placeholder="请输入密码" required aria-describedby="notice"><button id="reveal" type="button" aria-pressed="false">显示</button></div><p id="notice" role="status" aria-live="polite"></p><button id="unlock" class="primary" type="submit">解锁</button></form><p id="setupNotice" role="status" hidden></p><details id="connection"><summary>Connection / 本地模型设置</summary><p class="hint">Connect your own local OpenAI-compatible server. / 连接自己的本地模型服务。</p><label for="baseUrl">Local API URL</label><input id="baseUrl" value="http://127.0.0.1:1234/v1"><button id="detect" type="button">Detect models / 读取模型</button><label for="modelA">Model A</label><input id="modelA" list="modelList"><label for="modelB">Model B (optional)</label><input id="modelB" list="modelList"><datalist id="modelList"></datalist><label for="locale">Interface / 界面</label><select id="locale"><option value="en-US">English</option><option value="zh-CN">简体中文</option></select><p id="connectionNotice" role="status"></p><button id="saveConnection" type="button">Save and restart / 保存并重启</button></details><button id="exit" class="secondary">退出 DSH Private</button><p class="hint">聊天默认不保存；手动保存的聊天会加密存储在 本机加密目录。</p></section></main><script src="gate.js"></script></body></html>
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none';script-src 'self';style-src 'self';img-src 'self';connect-src 'none';base-uri 'none';form-action 'none'"
+    />
+    <title>DSH Private</title>
+    <link rel="stylesheet" href="gate.css" />
+  </head>
+  <body>
+    <main class="gate">
+      <section class="card" aria-labelledby="title">
+        <img class="brand-logo" src="official-logo.png" alt="DeepSeek" />
+        <h1 id="title">DSH Private</h1>
+        <p class="subtitle">输入密码，继续你的私密聊天。</p>
+        <div id="setup" hidden>
+          <button id="prepare" class="primary">生成初始密码</button>
+          <div id="initial" hidden>
+            <p>请妥善保存此密码，遗失后无法找回。</p>
+            <code id="generated"></code><button id="confirm" class="primary">已记下，创建密码</button>
+          </div>
+        </div>
+        <form id="unlockForm" autocomplete="off" hidden>
+          <label for="password">密码</label>
+          <div class="password-field">
+            <input
+              id="password"
+              type="password"
+              autocomplete="off"
+              placeholder="请输入密码"
+              required
+              aria-describedby="notice"
+            /><button id="reveal" type="button" aria-pressed="false">显示</button>
+          </div>
+          <p id="notice" role="status" aria-live="polite"></p>
+          <button id="unlock" class="primary" type="submit">解锁</button>
+        </form>
+        <p id="setupNotice" role="status" hidden></p>
+        <details id="connection">
+          <summary>Connection / 本地模型设置</summary>
+          <p class="hint">Connect your own local OpenAI-compatible server. / 连接自己的本地模型服务。</p>
+          <label for="baseUrl">Local API URL</label
+          ><input id="baseUrl" value="http://127.0.0.1:1234/v1" /><button id="detect" type="button">
+            Detect models / 读取模型</button
+          ><label for="modelA">Model A</label><input id="modelA" list="modelList" /><label for="modelB"
+            >Model B (optional)</label
+          ><input id="modelB" list="modelList" /><datalist id="modelList"></datalist
+          ><label for="locale">Interface / 界面</label
+          ><select id="locale">
+            <option value="en-US">English</option>
+            <option value="zh-CN">简体中文</option>
+          </select>
+          <p id="connectionNotice" role="status"></p>
+          <button id="saveConnection" type="button">Save and restart / 保存并重启</button>
+        </details>
+        <button id="exit" class="secondary">退出 DSH Private</button>
+        <p class="hint">聊天默认不保存；手动保存的聊天会加密存储在 本机加密目录。</p>
+      </section>
+    </main>
+    <script src="gate.js"></script>
+  </body>
+</html>

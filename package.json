@@ -4,6 +4,12 @@
   "private": true,
   "type": "module",
   "license": "MIT",
-  "scripts": {"test": "node --test test/*.test.mjs"},
-  "engines": {"node": ">=24"}
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "format": "npx --yes prettier@3.3.3 --write \"app/**/*.{mjs,js,cjs,css,html}\" \"scripts/**/*.mjs\" \"test/**/*.mjs\" app-entry.mjs",
+    "format:check": "npx --yes prettier@3.3.3 --check \"app/**/*.{mjs,js,cjs,css,html}\" \"scripts/**/*.mjs\" \"test/**/*.mjs\" app-entry.mjs"
+  },
+  "engines": {
+    "node": ">=24"
+  }
 }
