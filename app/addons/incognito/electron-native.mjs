@@ -6,7 +6,8 @@ import { savedSessions } from "./session-family.mjs";
 import { recoverExecutionDirectories } from "./execution-cleanup.mjs";
 import { recoverPrivateCaches } from "./private-cache.mjs";
 import { installDownloads } from "./downloads.mjs";
-import { app, BrowserWindow, WebContentsView, ipcMain, powerMonitor, Menu, dialog } from "electron";
+import { chatAction } from "./chat-actions.mjs";
+import { app, BrowserWindow, WebContentsView, ipcMain, powerMonitor, dialog } from "electron";
 import fs from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import path from "node:path";
@@ -289,63 +290,6 @@ async function importStudioImage(entry, expectedSessionId) {
     entry.importing = false;
   }
 }
-async function save(entry) {
-  await entry.runtime.save(await selection(entry));
-  await notify(
-    entry,
-    "Encrypted chat saved. Save again after further changes. / 当前聊天已加密保存，后续新增内容需再次保存。",
-  );
-}
-async function remove(entry) {
-  const id = await selection(entry);
-  if (!id) throw Error("请先选择一个聊天。");
-  const answer = await dialog.showMessageBox(entry.window, {
-    type: "question",
-    message: "永久删除当前聊天？",
-    detail: "删除后无法在 DSH 中恢复。",
-    buttons: ["取消", "删除"],
-    defaultId: 0,
-    cancelId: 0,
-  });
-  if (answer.response !== 1) return;
-  await entry.runtime.delete(id);
-  await entry.view.webContents.loadURL(entry.runtime.url);
-}
-function showChatMenu(entry) {
-  const run = (fn) => () => Promise.resolve(fn()).catch((e) => notify(entry, e.message));
-  Menu.buildFromTemplate([
-    ...(entry.runtime?.studio
-      ? [
-          {
-            label: "图片工作台",
-            click: run(() =>
-              entry.view.webContents.executeJavaScript(
-                fs.readFileSync(path.join(root, "image-dialog.js"), "utf8"),
-              ),
-            ),
-          },
-          {
-            label: "无痕画廊",
-            click: run(() =>
-              entry.view.webContents.executeJavaScript(
-                'window.__dshPrivateImagesTab="gallery";' +
-                  fs.readFileSync(path.join(root, "image-dialog.js"), "utf8"),
-              ),
-            ),
-          },
-          {
-            label: "导入参考图片",
-            click: run(async () => {
-              if (await importStudioImage(entry))
-                await notify(entry, "图片已导入当前无痕聊天。保存聊天后才会保留。");
-            }),
-          },
-        ]
-      : []),
-    { label: "Save encrypted chat / 保存当前聊天", click: run(() => save(entry)) },
-    { label: "Delete chat permanently / 永久删除当前聊天", click: run(() => remove(entry)) },
-  ]).popup({ window: entry.window });
-}
 async function requestExit(entry) {
   if (entry.confirming || entry.closing) return;
   entry.confirming = true;
@@ -436,9 +380,10 @@ ipcMain.handle("dsh-incognito-action", async (event, method, args = {}) => {
       entry.backend.vault.check();
       return { ok: true, value: await entry.runtime.call("image-read", args) };
     }
-    if (method === "chat-menu") {
-      if (!entry.runtime || !entry.backend.vault.key) throw Error("请先解锁。");
-      showChatMenu(entry);
+    if (method === "chat-save" || method === "chat-delete") {
+      await chatAction(entry, method, args, () =>
+        entry.view.webContents.loadURL(entry.runtime.url).catch(() => {}),
+      );
       return { ok: true };
     }
     if (method === "password-dialog") {

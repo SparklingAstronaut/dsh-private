@@ -1,7 +1,24 @@
 window.__ModuleLoader__.load({
   id: "dsh-incognito-client",
   factory: (require) => {
-    const { createElement: h, useState, useEffect } = require("react");
+    const { createElement: h, Fragment, useState, useEffect, useSyncExternalStore } = require("react");
+    const ui = require("@deepseek-ai/dsh-client-ui-primitives");
+    // Small observable value for the toast and the delete confirmation.
+    const store = (value) => {
+      const listeners = new Set();
+      return {
+        get: () => value,
+        set: (next) => {
+          value = next;
+          for (const listener of listeners) listener();
+        },
+        subscribe: (listener) => {
+          listeners.add(listener);
+          return () => listeners.delete(listener);
+        },
+      };
+    };
+    const useStore = (s) => useSyncExternalStore(s.subscribe, s.get);
     const Button = ({ variant, style, ...props }) =>
       h("button", {
         ...props,
@@ -16,7 +33,7 @@ window.__ModuleLoader__.load({
         },
       });
     return {
-      inject: ["uiSession", "slots"],
+      inject: ["uiSession", "slots", "locale"],
       apply(ctx) {
         window.dshPrivateSelection = () => ctx.uiSession.current.getSnapshot().key;
         const imageKind = "private-generated-image";
@@ -173,21 +190,165 @@ window.__ModuleLoader__.load({
               ),
           ),
         );
-        ctx.slots.inject("conversation.session.header.actions", () =>
-          ctx.slots.register(
-            { name: "conversation.session.header.actions", id: "incognito-chat-actions", order: 100 },
-            () =>
-              h(
-                Button,
-                {
-                  "aria-label": "Private chat menu / 无痕聊天菜单",
-                  title: "Save or delete this chat / 保存或删除聊天",
-                  onClick: () => call("chat-menu"),
-                },
-                "⋯",
-              ),
-          ),
+        // Save and delete live in DSH's own chat menu (the ... on each chat in the sidebar).
+        const NS = "incognito";
+        ctx.effect(
+          () =>
+            ctx.locale.register(NS, {
+              zh: {
+                save: "保存聊天（加密）",
+                saved: "已加密保存。之后的新内容需要再次保存。",
+                delete: "永久删除",
+                "delete.title": "永久删除这个聊天？",
+                "delete.desc": "将删除「{title}」以及它已保存的加密存档（如有），无法恢复。",
+                "delete.action": "删除",
+                deleting: "正在删除…",
+                untitled: "新会话",
+                cancel: "取消",
+                close: "关闭",
+                noChat: "请先打开一个聊天。",
+              },
+              en: {
+                save: "Save chat (encrypted)",
+                saved: "Saved and encrypted. Save again after further changes.",
+                delete: "Delete permanently",
+                "delete.title": "Delete this chat permanently?",
+                "delete.desc":
+                  "“{title}” and any encrypted copy you saved will be deleted. This cannot be undone.",
+                "delete.action": "Delete",
+                deleting: "Deleting…",
+                untitled: "New chat",
+                cancel: "Cancel",
+                close: "Close",
+                noChat: "Open a chat first.",
+              },
+            }),
+          "incognito: dictionaries",
         );
+        const toast = store(null),
+          pendingDelete = store(null);
+        let toastSeq = 0;
+        const showToast = (value) => toast.set({ ...value, seq: ++toastSeq });
+        const saveChat = (sessionId) =>
+          window.incognito
+            .call("chat-save", { sessionId })
+            .then((r) => showToast(r.ok ? { key: "saved", tone: "success" } : { text: r.error }));
+        function SaveMenuItem({ sessionId, useMenuOpenState, t }) {
+          const [, setOpen] = useMenuOpenState();
+          return h(
+            ui.MenuItemButton,
+            {
+              icon: h(ui.IconShieldOutlineRegular, {}),
+              onSelect: () => {
+                setOpen(false);
+                saveChat(sessionId);
+              },
+            },
+            t("save"),
+          );
+        }
+        function DeleteMenuItem({ sessionId, displayTitle, useMenuOpenState, t }) {
+          const [, setOpen] = useMenuOpenState();
+          return h(
+            ui.MenuItemButton,
+            {
+              icon: h(ui.IconTrashOutlineRegular, {}),
+              danger: true,
+              separatorBefore: true,
+              onSelect: () => {
+                setOpen(false);
+                pendingDelete.set({ sessionId, title: displayTitle });
+              },
+            },
+            t("delete"),
+          );
+        }
+        function DeleteConfirm({ t }) {
+          const request = useStore(pendingDelete);
+          const [busy, setBusy] = useState(false);
+          const [error, setError] = useState(null);
+          if (!request) return null;
+          const close = () => {
+            if (busy) return;
+            setError(null);
+            pendingDelete.set(null);
+          };
+          const confirm = () => {
+            setBusy(true);
+            setError(null);
+            // On success the private view reloads without the deleted chat.
+            window.incognito.call("chat-delete", { sessionId: request.sessionId }).then((r) => {
+              setBusy(false);
+              if (r.ok) pendingDelete.set(null);
+              else setError(r.error);
+            });
+          };
+          return h(
+            ui.Modal,
+            {
+              open: true,
+              onClose: close,
+              closeLabel: t("close"),
+              title: t("delete.title"),
+              description: t("delete.desc", { title: request.title || t("untitled") }),
+              footer: h(
+                Fragment,
+                null,
+                h(ui.Button, { variant: "outline", disabled: busy, onClick: close }, t("cancel")),
+                h(
+                  ui.Button,
+                  {
+                    variant: "outline",
+                    disabled: busy,
+                    onClick: confirm,
+                    style: { color: "var(--dsw-alias-label-error,#e5484d)" },
+                  },
+                  busy ? t("deleting") : t("delete.action"),
+                ),
+              ),
+            },
+            error &&
+              h("div", { role: "alert", style: { color: "var(--dsw-alias-label-error,#e5484d)" } }, error),
+          );
+        }
+        function ChatToast({ t }) {
+          const value = useStore(toast);
+          if (!value) return null;
+          return h(ui.Toast, {
+            key: value.seq,
+            text: value.key ? t(value.key) : value.text,
+            tone: value.tone,
+            onDone: () => {
+              if (toast.get()?.seq === value.seq) toast.set(null);
+            },
+          });
+        }
+        ctx.slots.inject("sidebar.workspaces.session.menu.item", function* () {
+          yield ctx.slots.register(
+            { name: "sidebar.workspaces.session.menu.item", id: "incognito-save", order: 50, locale: NS },
+            SaveMenuItem,
+          );
+          yield ctx.slots.register(
+            { name: "sidebar.workspaces.session.menu.item", id: "incognito-delete", order: 900, locale: NS },
+            DeleteMenuItem,
+          );
+        });
+        ctx.slots.inject("shell.overlay", function* () {
+          yield ctx.slots.register(
+            { name: "shell.overlay", id: "incognito.delete", locale: NS },
+            DeleteConfirm,
+          );
+          yield ctx.slots.register({ name: "shell.overlay", id: "incognito.toast", locale: NS }, ChatToast);
+        });
+        // Ctrl+S saves the open chat, as in other apps.
+        window.addEventListener("keydown", (e) => {
+          if (!(e.ctrlKey || e.metaKey) || e.shiftKey || e.altKey || e.key.toLowerCase() !== "s") return;
+          e.preventDefault();
+          if (e.repeat) return;
+          const sessionId = ctx.uiSession.current.getSnapshot().key;
+          if (sessionId) saveChat(sessionId);
+          else showToast({ key: "noChat" });
+        });
       },
     };
   },

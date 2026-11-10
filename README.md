@@ -61,7 +61,7 @@ Open the app, unlock, and talk to your own local model. Conversations are tempor
 1. **Download and extract.** Unpack the **entire** ZIP into a writable local folder, then run `DSH Private.exe`.
 2. **Connect a local model.** Start your model server. On the password screen, expand **Connection**, enter its loopback API URL (for example `http://127.0.0.1:1234/v1`), detect or enter its model ID, then save and restart. Model B is optional.
 3. **Create your vault password.** Generate a password, keep it somewhere safe, then unlock. **There is no password recovery.**
-4. **Chat, then choose what to keep.** Use the private chat menu to save an encrypted snapshot. When closing the app, confirm whether to discard any unsaved changes.
+4. **Chat, then choose what to keep.** To save an encrypted snapshot, open the chat's **⋯** menu in the sidebar and choose **Save chat (encrypted)**, or press **Ctrl+S**. The same menu deletes a chat permanently. When closing the app, confirm whether to discard any unsaved changes.
 
 Core chat and setup support English. Some advanced privacy and Studio dialogs currently use Chinese labels.
 
