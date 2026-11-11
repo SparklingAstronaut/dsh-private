@@ -1,5 +1,5 @@
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { modelAliases, localModelUrl } from "../../portable-paths.mjs";
+import { modelAliases, localModelUrl, settings } from "../../portable-paths.mjs";
 import { LOCAL_PROVIDER, MODEL_SLOTS } from "../../model-slots.mjs";
 import { resolvePrivatePath } from "../../portable-paths.mjs";
 import { bindStudioImageWorker } from "./studio-image-rpc.mjs";
@@ -8,7 +8,9 @@ import { locatePrivatePatch } from "./patch-location.mjs";
 import { pluginBoot } from "./plugin-boot.mjs";
 import { bindPtcWorker } from "./ptc-rpc.mjs";
 import { bindShellWorker } from "./shell-rpc.mjs";
-import { bindSearchWorker } from "./search-rpc.mjs";
+import { bindWebWorker } from "./web-rpc.mjs";
+import { installNetworkGuard } from "./network-guard.mjs";
+import { applyToolPolicy } from "./tool-policy.mjs";
 import { createHash } from "node:crypto";
 import { WELCOME_NS, WELCOME_FIELD } from "./welcome-notice.mjs";
 import { hydrate, checkpoint, rowFp } from "./private-data.mjs";
@@ -30,19 +32,23 @@ globalThis.privateWelcomeNotice = (version) => {
   welcomeNotice = version;
   parentPort.postMessage({ type: "welcome-notice", version });
 };
-bindSearchWorker(parentPort);
+bindWebWorker(parentPort);
 process.env.DSH_TELEMETRY_DISABLED = "1";
 process.env.DSH_HOME = resolvePrivatePath("data/empty-home");
 const installedProfile = workerData.pluginProfile
   ? JSON.parse(fs.readFileSync(workerData.pluginProfile.dir + "/package.json", "utf8"))
   : null;
-// Explicitly installed and selected Host plugins have normal Host privileges.
-// DSH-owned chat services still use the memory/encrypted adapters below.
+// Plugins the user installed and enabled in private mode (after the app's warning) have normal
+// Host privileges: they can read unlocked chats, write files and use the network. Without them,
+// this process cannot write files, start programs or connect to anything but the local model.
+// DSH-owned chat services always use the memory/encrypted adapters below.
 const trustedPlugins = (installedProfile?.dsh?.profile?.bundles || []).filter((name) =>
   Object.hasOwn(installedProfile?.dependencies || {}, name),
 );
-const blocked = [];
+const blocked = [],
+  blockedNetwork = [];
 if (!trustedPlugins.length) {
+  installNetworkGuard({ modelUrl: localModelUrl(""), onBlocked: () => blockedNetwork.push(Date.now()) });
   const deny = () => {
     blocked.push(Date.now());
     throw Error("Incognito runtime forbids filesystem writes");
@@ -159,13 +165,17 @@ http.createServer = function (...args) {
 syncBuiltinESMExports();
 await import("./memory-workspace-files.mjs");
 const originalFetch = globalThis.fetch;
-if (!trustedPlugins.length)
-  globalThis.fetch = (input, options) => {
-    const u = new URL(typeof input === "string" ? input : input.url || input);
-    if (u.origin !== new URL(localModelUrl("")).origin)
-      return Promise.reject(Error("Private network destination blocked"));
-    return originalFetch(input, options);
-  };
+const modelOrigin = new URL(localModelUrl("")).origin;
+globalThis.fetch = (input, options) => {
+  const u = new URL(typeof input === "string" ? input : input.url || input);
+  // A redirect could carry the chat to another server, so model requests never follow one.
+  if (u.origin === modelOrigin) return originalFetch(input, { ...options, redirect: "error" });
+  if (!trustedPlugins.length) {
+    blockedNetwork.push(Date.now());
+    return Promise.reject(Error("Private network destination blocked"));
+  }
+  return originalFetch(input, options);
+};
 let ctx;
 if (workerData.pluginProfile) {
   globalThis.privatePlugins = bindPluginWorker(parentPort);
@@ -285,12 +295,16 @@ try {
   ctx = await boot(
     "DSH Incognito",
     appRoot + "/incognito-root.yml",
-    plugins?.patches ?? [
-      ...["dsh-base", "dsh-web-app"].flatMap((n) =>
-        loadOverlayPatches("DSH Incognito", base + n + "/cordis.patch.yml"),
-      ),
-      ...privacy,
-    ],
+    // Tools that could send chat content off this computer follow settings.json (tool-policy.mjs).
+    applyToolPolicy(
+      plugins?.patches ?? [
+        ...["dsh-base", "dsh-web-app"].flatMap((n) =>
+          loadOverlayPatches("DSH Incognito", base + n + "/cordis.patch.yml"),
+        ),
+        ...privacy,
+      ],
+      settings,
+    ),
     async (c) => {
       c.baseUrl = pathToFileURL(appRoot + "/").href;
       if (plugins) await plugins.prepare(c);
@@ -311,6 +325,7 @@ try {
     port: ctx.webServer.port,
     url: ctx.connection.authenticatedUrl("http://127.0.0.1:" + ctx.webServer.port + "/"),
     blockedWrites: blocked.length,
+    blockedNetwork: blockedNetwork.length,
   });
 } catch (e) {
   parentPort.postMessage({
@@ -321,6 +336,7 @@ try {
       args: m.args.map((a) => (a instanceof Error ? a.message : String(a))),
     })),
     blockedWrites: blocked.length,
+    blockedNetwork: blockedNetwork.length,
   });
 }
 parentPort.on("message", async ({ id, method, args }) => {
@@ -394,6 +410,7 @@ parentPort.on("message", async ({ id, method, args }) => {
           _fp: rowFp(r),
         })),
         blockedWrites: blocked.length,
+        blockedNetwork: blockedNetwork.length,
       };
     } else if (method === "snapshot") {
       checkpoint();
@@ -406,6 +423,7 @@ parentPort.on("message", async ({ id, method, args }) => {
           projection: cached[r.header.id],
         })),
         blockedWrites: blocked.length,
+        blockedNetwork: blockedNetwork.length,
       };
     } else if (method === "stop") {
       await ctx?.fiber.dispose();
@@ -415,6 +433,7 @@ parentPort.on("message", async ({ id, method, args }) => {
         trustedPlugins,
         agents: ctx?.agents.list().map((a) => ({ id: a.id, status: a.status })),
         blockedWrites: blocked.length,
+        blockedNetwork: blockedNetwork.length,
       };
     else throw Error("Unsupported private runtime operation");
     parentPort.postMessage({ id, value });

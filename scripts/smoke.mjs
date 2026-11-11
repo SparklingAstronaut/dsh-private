@@ -10,6 +10,28 @@ const build = path.resolve(process.argv[2] || "dist/DSH-Private");
 const root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), "dsh-private-smoke-")));
 const app = path.join(build, "resources/private/app");
 let calls = 0;
+// A loopback server standing in for any destination other than the local model.
+const outside = [];
+const sink = http.createServer(async (req, res) => {
+  let body = "";
+  for await (const chunk of req) body += chunk;
+  outside.push(req.method + " " + req.url + " " + body);
+  res.end("synthetic outside server");
+});
+await new Promise((r) => sink.listen(0, "127.0.0.1", r));
+const sinkUrl = "http://127.0.0.1:" + sink.address().port;
+const toolNames = new Set();
+let redirectedModelRequests = 0;
+const event = (choice) =>
+  "data: " +
+  JSON.stringify({
+    id: "synthetic",
+    object: "chat.completion.chunk",
+    created: 1,
+    model: "synthetic-model",
+    choices: [choice],
+  }) +
+  "\n\n";
 const server = http.createServer(async (req, res) => {
   if (req.url === "/v1/models") {
     res.setHeader("Content-Type", "application/json");
@@ -22,6 +44,31 @@ const server = http.createServer(async (req, res) => {
     const input = JSON.parse(text);
     assert.equal(input.model, "synthetic-model");
     calls++;
+    for (const tool of input.tools ?? []) toolNames.add(tool.function?.name);
+    const conversation = JSON.stringify(input.messages);
+    // Probes for the network boundary: a model that tries to send the chat elsewhere.
+    if (conversation.includes("SYNTHETIC_REDIRECT_PROBE")) {
+      redirectedModelRequests++;
+      res.writeHead(307, { Location: sinkUrl + "/redirected-chat" });
+      res.end();
+      return;
+    }
+    if (conversation.includes("SYNTHETIC_WEB_PROBE") && !input.messages.some((m) => m.role === "tool")) {
+      res.writeHead(200, { "Content-Type": "text/event-stream" });
+      const call = {
+        index: 0,
+        id: "call_synthetic_web",
+        type: "function",
+        function: {
+          name: "web_fetch",
+          arguments: JSON.stringify({ url: sinkUrl + "/?SYNTHETIC_WEB_PROBE" }),
+        },
+      };
+      res.write(event({ index: 0, delta: { role: "assistant", tool_calls: [call] }, finish_reason: null }));
+      res.write(event({ index: 0, delta: {}, finish_reason: "tool_calls" }));
+      res.end("data: [DONE]\n\n");
+      return;
+    }
     if (input.stream) {
       res.writeHead(200, { "Content-Type": "text/event-stream" });
       for (const delta of [{ role: "assistant" }, { content: "703" }])
@@ -68,21 +115,7 @@ process.env.DSH_PRIVATE_SETTINGS = JSON.stringify({
 process.env.DSH_PRIVATE_DESKTOP_ROOT = path.join(build, "resources/app");
 process.env.DSH_HOME = path.join(root, "empty-home");
 process.env.DSH_TELEMETRY_DISABLED = "1";
-for (const name of ["empty-home", "presets"]) fs.mkdirSync(path.join(root, name), { recursive: true });
-const presets = path.join(app, "addons/incognito/presets");
-for (const rel of fs.readdirSync(presets, { recursive: true })) {
-  const from = path.join(presets, rel),
-    to = path.join(root, "presets", rel);
-  if (!fs.statSync(from).isFile()) continue;
-  fs.mkdirSync(path.dirname(to), { recursive: true });
-  fs.writeFileSync(
-    to,
-    fs
-      .readFileSync(from, "utf8")
-      .replaceAll("@private/", path.join(app, "addons/incognito/").replaceAll("\\", "/"))
-      .replaceAll("@data/", root.replaceAll("\\", "/") + "/"),
-  );
-}
+fs.mkdirSync(path.join(root, "empty-home"), { recursive: true });
 const importApp = (rel) => import(pathToFileURL(path.join(app, rel)).href);
 const { Backend } = await importApp("addons/incognito/backend.mjs");
 const { PrivateRuntime } = await importApp("addons/incognito/runtime.mjs");
@@ -369,17 +402,79 @@ try {
     false,
     "Explicitly saving must clear the warning",
   );
+  // By default a private chat's AI has no tools that can send its content off this computer.
+  for (const name of ["web_fetch", "web_search", "pwsh", "bash", "job_list", "workflow"])
+    assert(!toolNames.has(name), "Default private chats must not offer " + name);
+  assert(toolNames.has("read"), "The synthetic model must have seen the private tool list");
+  const probe = async (text, done) => {
+    const chat = await rpc("session/create", {
+      request: { workspaceId: workspaces.workspace.workspaceId, agentPreset: "standard" },
+    });
+    await rpc("session/prompt", {
+      request: {
+        sessionId: chat.sessionId,
+        requestId: text,
+        mode: "queue",
+        content: [{ type: "text", text }],
+      },
+    });
+    for (let i = 0; i < 100; i++) {
+      await new Promise((r) => setTimeout(r, 100));
+      const row = (await runtime.call("snapshot")).sessions.find((r) => r.header.id === chat.sessionId);
+      if (done(row?.events ?? [])) return row.events;
+    }
+    return [];
+  };
+  // A web_fetch call the model makes anyway is refused, and nothing leaves the process.
+  const web = await probe("SYNTHETIC_WEB_PROBE", (events) => JSON.stringify(events).includes("703"));
+  assert(JSON.stringify(web).includes("unknown tool"), "web_fetch must be unavailable");
+  // The model server redirecting a request must not carry the chat to another server.
+  await probe("SYNTHETIC_REDIRECT_PROBE", (events) => events.some((e) => e.type === "turn/end"));
+  assert(redirectedModelRequests >= 1, "The redirect probe must reach the model server");
+  assert.deepEqual(outside, [], "Nothing may reach a server other than the local model");
   await runtime.stop();
   runtime = null;
   backend.lock();
+  // Plugins: never installed from chat files, and never without the user's go-ahead.
+  const { createPrivatePluginManager } = await importApp("addons/incognito/plugin-host.mjs");
+  const executions = path.join(root, "plugin-check/Executions");
+  const leftover = path.join(executions, "plugin-install-0f0e0d0c-0b0a-4908-8706-050403020100");
+  fs.mkdirSync(leftover, { recursive: true });
+  fs.writeFileSync(path.join(leftover, "chat-excerpt.txt"), "SYNTHETIC_PLUGIN_INPUT");
+  const plugins = await createPrivatePluginManager({
+    root: path.join(root, "plugin-check/Plugins"),
+    executionRoot: executions,
+  });
+  try {
+    assert.equal(fs.existsSync(leftover), false, "Copies left by earlier plugin installs must be removed");
+    const pkg = path.join(root, "plugin-check/virtual-package");
+    const files = {
+      [path.join(pkg, "chat-excerpt.txt").toLowerCase()]: {
+        path: path.join(pkg, "chat-excerpt.txt"),
+        data: Buffer.from("SYNTHETIC_PLUGIN_INPUT").toString("base64"),
+      },
+    };
+    for (const method of ["inspect", "installBundle"])
+      await assert.rejects(
+        plugins.call(method, [pkg, {}, { sessionId: "synthetic", files }]),
+        /Plugins page/,
+      );
+    await assert.rejects(plugins.call("installBundle", ["synthetic-plugin", {}]), /Cancelled/);
+    await assert.rejects(plugins.call("setBundleEnabled", ["synthetic-plugin", true]), /Cancelled/);
+    assert.deepEqual(fs.readdirSync(executions), [], "No chat file may be written for a plugin");
+    assert.equal(fs.existsSync(pkg), false);
+  } finally {
+    await plugins.close();
+  }
   console.log(
-    "PASS encrypted cache, filesystem/MCP/execution adapters, portable runtime, authenticated UI, chat, encrypted readback, clean reopen, genuine unsaved changes, explicit save, and shutdown.",
+    "PASS encrypted cache, filesystem/MCP/execution adapters, portable runtime, authenticated UI, chat, encrypted readback, clean reopen, genuine unsaved changes, explicit save, network boundary, plugin consent, and shutdown.",
   );
 } finally {
   await runtime?.stop().catch(() => {});
   backend.lock();
   server.closeAllConnections();
-  await new Promise((r) => server.close(r));
+  sink.closeAllConnections();
+  await Promise.all([new Promise((r) => server.close(r)), new Promise((r) => sink.close(r))]);
   assert.equal(path.dirname(root), fs.realpathSync.native(os.tmpdir()));
   assert(path.basename(root).startsWith("dsh-private-smoke-"));
   fs.rmSync(root, { recursive: true });

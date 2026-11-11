@@ -20,7 +20,7 @@ export async function shutdownPrivateRuntime(runtime, purge = true) {
   for (const action of [
     () => runtime.stopStudioReads?.(),
     () => runtime.studio?.close(),
-    () => runtime.stopSearch?.(),
+    () => runtime.stopWeb?.(),
     () => runtime.stopPlugins?.(),
     () => runtime.stopPtc?.(),
     () => runtime.stopShell?.(),

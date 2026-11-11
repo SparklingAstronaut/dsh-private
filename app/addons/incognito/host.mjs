@@ -4,11 +4,13 @@ import { MODEL_A, MODEL_B, normalizeModelSlot } from "../../model-slots.mjs";
 import { fileURLToPath } from "node:url";
 import { configurePrivateStudioAtStartup } from "./studio-config.mjs";
 import { welcomeSeed, rememberWelcome } from "./welcome-notice.mjs";
+import { assertWebAllowed } from "./web-rpc.mjs";
 export const name = "incognito-host";
 export const inject = ["settings", "agents", "tools"];
 export function apply(ctx, config = {}) {
   configurePrivateStudioAtStartup(ctx, config.studioConfig, resolvePrivatePath("data/private-studio.json"));
   const key = Symbol.for("dsh.incognito.bridge");
+  const allowWeb = () => assertWebAllowed(settings, !!globalThis[Symbol.for("dsh.incognito.active")]);
   ctx.provide("incognitoMode", { active: () => !!globalThis[Symbol.for("dsh.incognito.active")] });
   function state() {
     return (
@@ -29,9 +31,14 @@ export function apply(ctx, config = {}) {
         sandboxPolicy: ctx.get("sandboxPolicy"),
       };
     },
+    // Web requests from a private chat, made here only with "webAccess": true in settings.json.
     privateSearch(request, signal) {
-      if (!globalThis[Symbol.for("dsh.incognito.active")]) throw Error("Private mode is not active");
+      allowWeb();
       return ctx.get("web").search(request, signal);
+    },
+    privateWebFetch(request, signal) {
+      allowWeb();
+      return ctx.get("web").fetch(request, signal);
     },
     privateSettings() {
       const describe = ctx.settings.describe();

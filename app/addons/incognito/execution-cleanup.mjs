@@ -6,10 +6,11 @@ import { randomUUID } from "node:crypto";
 export const executionRoot = resolvePrivatePath("private/Executions");
 const marker = ".dsh-private-owner.json";
 const uuid = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
-function checked(root, target) {
+const legacyPluginInput = /^plugin-install-[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
+function checked(root, target, name = uuid) {
   root = path.resolve(root);
   target = path.resolve(target);
-  if (path.dirname(target).toLowerCase() !== root.toLowerCase() || !uuid.test(path.basename(target)))
+  if (path.dirname(target).toLowerCase() !== root.toLowerCase() || !name.test(path.basename(target)))
     throw Error("Invalid private cleanup target");
   let current = path.parse(root).root;
   for (const part of path.relative(current, target).split(path.sep)) {
@@ -19,8 +20,8 @@ function checked(root, target) {
   }
   return target;
 }
-function remove(root, target) {
-  fs.rmSync(checked(root, target), { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+function remove(root, target, name) {
+  fs.rmSync(checked(root, target, name), { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 }
 export function createExecutionDirectory(root = executionRoot) {
   const target = checked(root, path.join(root, randomUUID()));
@@ -50,4 +51,21 @@ export function recoverExecutionDirectories(root = executionRoot) {
       else throw error;
     }
   }
+}
+// Preview 7 and earlier copied chat files for a plugin install from a chat into
+// "plugin-install-<uuid>" folders and never removed them. Plugins are no longer installed from
+// chat files, so these folders are removed, except one an installed plugin still points into.
+export function removeLegacyPluginInputs(root = executionRoot, installedFrom = []) {
+  if (!fs.existsSync(root)) return [];
+  const removed = [];
+  for (const entry of fs.readdirSync(root, { withFileTypes: true })) {
+    if (!legacyPluginInput.test(entry.name)) continue;
+    const target = checked(root, path.join(root, entry.name), legacyPluginInput);
+    if (!entry.isDirectory()) throw Error("Invalid private cleanup target");
+    const prefix = target.toLowerCase() + path.sep;
+    if (installedFrom.some((p) => path.resolve(p).toLowerCase().startsWith(prefix))) continue;
+    remove(root, target, legacyPluginInput);
+    removed.push(entry.name);
+  }
+  return removed;
 }

@@ -50,10 +50,6 @@
   config:
     provider: private-local
     model: '@model-a'
-- id: agent-presets
-  config:
-    default: standard
-    includeUserRoot: false
 - insert:
     - id: private-guard
       name: '@private/private-guard.mjs'
@@ -93,8 +89,15 @@
 - id: web-search-deepseek
   disabled: true
 
+# Pages are never fetched from inside the private chat process. With "webAccess": true the
+# app fetches them instead (private-web.mjs); otherwise web search and fetch are unavailable.
 - id: web-fetch-http
-  disabled: false
+  disabled: true
+
+- id: web
+  config:
+    searchProvider: private-search
+    fetchProvider: private-fetch
 
 - id: tool-web
   disabled: true
@@ -140,15 +143,6 @@
     - id: private-directory-picker-client
       name: '@deepseek-ai/dsh-client-ui-directory-picker-native'
 
-- id: agent-presets
-  config:
-    default: standard
-    includeUserRoot: false
-    includeShippedRoot: false
-    roots:
-      - path: '@data/presets'
-        trust: system
-
 - id: workspace-changes
   disabled: true
 - insert:
@@ -156,8 +150,8 @@
       name: '@private/memory-changes.mjs'
 
 - insert:
-    - id: private-web-search
-      name: '@private/private-web-search.mjs'
+    - id: private-web
+      name: '@private/private-web.mjs'
 
 
 

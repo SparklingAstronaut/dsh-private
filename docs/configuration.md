@@ -8,7 +8,7 @@ Optional integrations are retained as source but not automatically configured in
 
 - `mcp.python`, `mcp.sitePackages`, and `mcp.servers` enable private tool servers in a user-owned Python environment. The default server list is empty. See [Private tool adapters](#private-tool-adapters).
 - Private Studio (image generation in private mode) needs an image plugin that provides the services listed under [Plugins](#plugins), your own ComfyUI installation, and an explicitly prepared `private-studio.json` inside the app's data directory. See [Private Studio](#private-studio). Encrypted images must stay with their matching vault.
-- Shell/PTC execution requires the corresponding OS tools. External writes/tools are not a zero-trace environment.
+- Shell, PTC and workflow programs are off unless `"shellAccess": true`, and web search and page fetching are off unless `"webAccess": true`. See [Network and programs](#network-and-programs). Programs are not a zero-trace environment.
 
 Do not copy another user's `settings.json`, credentials, plugins, or vault into a public distribution. The application does not auto-import data from official DSH or earlier custom installations.
 
@@ -16,14 +16,25 @@ Do not copy another user's `settings.json`, credentials, plugins, or vault into 
 
 If a local model provider is already configured in DSH, for example by a local model plugin, set `"provider"` to its ID to reuse it for private chats. The core copies its settings (model names, context sizes, reasoning options) for Model A and Model B only. Its base URL must equal the loopback URL in Connection, and the built-in "Local model" entry is then not added to normal mode.
 
+## Network and programs
+
+The private chat process connects only to the local model server set in Connection. It cannot write files or start programs, and a model request that the server redirects elsewhere fails. By default the AI in a private chat has no tool that can send chat content off this computer. Two settings add such tools:
+
+- `"webAccess": true` adds web search and page fetching. The app carries them out outside the private chat process: searches use the search service configured in DSH (DeepSeek by default), and pages are fetched from public addresses only. The AI chooses the queries and addresses, so they can contain anything from the chat.
+- `"shellAccess": true` adds PowerShell, the terminal, PTC programs and workflows, and the PTC and Minimal modes. These run as real programs on your computer. DSH's sandbox limits where they write, not where they connect, so a command can send chat content anywhere.
+
+Private tool adapters and plugins have their own rules, described below. Restart the app after changing these settings.
+
 ## Plugins
 
-DSH Private is DSH with a private-mode core, so DSH plugins can be added to its profile as usual. The release ships none. While private mode is open, ordinary plugin tools are paused because they may write chat content to disk. A plugin takes part in private mode only through these optional services:
+DSH Private is DSH with a private-mode core, so DSH plugins can be added to its profile as usual. The release ships none. Plugins run in the app's own process, which also holds the unlocked vault, so add only plugins you trust. While private mode is open, ordinary plugin tools are paused because they may write chat content to disk. A plugin takes part in private mode only through these optional services:
 
 - `localImageGpu` with `runPrivate()`, `retryRecovery()` and `busy`: hands the GPU between the chat model and private image jobs.
 - `privateStudioCompiler` with `describe()` and `prepare()`: supplies image workflows for private Studio. The core runs them in an encrypted workspace, encrypts the results and keeps them in the vault's private gallery.
 - `privateEntryGuard` with `isBusy()`: keeps private mode closed while the plugin's own normal-mode job is still running.
 - `localIncognitoEngine` with `snapshot()`, `selectPrivate(slot)`, `isPrivate()`, `activity()` and `stop()`: starts and stops local models for private mode. The built-in engine only checks that your server already serves the model. To let a plugin manage models instead, set `"modelEngine": "plugin"` in `settings.json`. Private chats still go only to the loopback server set in Connection.
+
+The Plugins page inside private mode installs plugins into private mode itself. Such a plugin runs inside the private chat process with full access: it can read every unlocked chat, write files and connect to the network, and the process's file, program and network limits no longer apply while it is enabled. The app asks for confirmation before it installs or enables one. The AI cannot install or enable plugins from a chat, and files from a chat are never installed as a plugin.
 
 ## Private Studio
 
@@ -107,7 +118,9 @@ Skills are read once at startup and available as `/<name>` in private chats. Not
 
 ## Private tool adapters
 
-Private tool servers run in a separate Python process with an in-memory filesystem. They cannot write to disk, start programs or open a file-backed database. Files they produce are returned to the chat and saved only when you save the chat.
+Private tool servers run in a separate Python process. Before any adapter or third-party package loads, the process lowers itself to the Windows Untrusted integrity level, so Windows refuses its writes to files, folders and the registry, including writes from native code. Python's own file functions work on an in-memory filesystem instead: files a tool produces are returned to the chat and saved only when you save the chat. Starting programs and file-backed databases are refused as well.
+
+This is not a full sandbox. An adapter can read any file your Windows account can read and can use the network, and it receives whatever the model passes to it. Add only adapters you trust.
 
 - `documents` is built in and reads PDF, DOCX, XLSX and PPTX attachments. Its Python environment needs `mcp`, `pyfakefs`, `pypdf`, `python-docx` and `openpyxl`.
 - Any other name in `mcp.servers` must be declared under `mcp.adapters`:
@@ -125,4 +138,4 @@ Private tool servers run in a separate Python process with an in-memory filesyst
 }
 ```
 
-The adapter file defines `create_server(context)` and returns a FastMCP server. `context.root` is the in-memory folder for the current model slot, `context.owner` is `model-a` or `model-b`, and `context.private_path` resolves data paths. The adapter can read its own folder, the Python environment and the `readOnly` folders, nothing else. To let a tool read a host folder as input, define `IMPORT_DIRECTORIES = {"tool_name": "argument_name"}`; the app copies that folder into the in-memory filesystem before the call.
+The adapter file defines `create_server(context)` and returns a FastMCP server. `context.root` is the in-memory folder for the current model slot, `context.owner` is `model-a` or `model-b`, and `context.private_path` resolves data paths. Python's file functions in the adapter see only its own folder, the Python environment and the `readOnly` folders; native code is not limited to these. To let a tool read a host folder as input, define `IMPORT_DIRECTORIES = {"tool_name": "argument_name"}`; the app copies that folder into the in-memory filesystem before the call.

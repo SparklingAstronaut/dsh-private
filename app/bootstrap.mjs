@@ -63,19 +63,4 @@ const overlay = [
   { insert: hostPlugins(root, config) },
 ];
 fs.writeFileSync(path.join(data, "host/cordis.patch.yml"), JSON.stringify(overlay, null, 2));
-const presetSource = path.join(root, "addons/incognito/presets"),
-  presetDest = path.join(data, "presets");
-for (const rel of fs.readdirSync(presetSource, { recursive: true })) {
-  const from = path.join(presetSource, rel),
-    to = path.join(presetDest, rel);
-  if (fs.statSync(from).isDirectory()) continue;
-  fs.mkdirSync(path.dirname(to), { recursive: true });
-  fs.writeFileSync(
-    to,
-    fs
-      .readFileSync(from, "utf8")
-      .replaceAll("@private/", path.join(root, "addons/incognito/").replaceAll("\\", "/"))
-      .replaceAll("@data/", data.replaceAll("\\", "/") + "/"),
-  );
-}
 await import("./addons/incognito/electron-native.mjs");

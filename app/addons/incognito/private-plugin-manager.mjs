@@ -1,5 +1,4 @@
-import path from "node:path";
-import { scope, row, canonical } from "./private-data.mjs";
+import { scope } from "./private-data.mjs";
 import { moduleOf } from "./imports.mjs";
 const { PluginManager } = await moduleOf("@deepseek-ai/dsh-plugin-manager");
 const list = PluginManager.prototype.listPlugins;
@@ -8,6 +7,9 @@ PluginManager.prototype.listPlugins = async function () {
     row.moduleName?.includes("/addons/incognito/") ? { ...row, readOnlyReason: "management-required" } : row,
   );
 };
+// Plugin changes in private mode are made by the app, which asks the user before a plugin is
+// installed or enabled (plugin-host.mjs). Within a chat the AI cannot change plugins at all.
+const CHANGES = new Set(["inspect", "installBundle", "setPluginEnabled", "setBundleEnabled", "removeBundle"]);
 for (const name of [
   "listBundles",
   "inspect",
@@ -18,18 +20,9 @@ for (const name of [
   "removeBundle",
 ])
   PluginManager.prototype[name] = function (...args) {
-    if (
-      ["inspect", "installBundle"].includes(name) &&
-      typeof args[0] === "string" &&
-      path.isAbsolute(args[0]) &&
-      scope.getStore()
-    ) {
-      const prefix = canonical(args[0]) + path.sep;
-      const files = Object.fromEntries(
-        Object.entries(row()?.files || {}).filter(([, f]) => canonical(f.path).startsWith(prefix)),
-      );
-      if (Object.keys(files).length) args = [args[0], args[1], { sessionId: scope.getStore(), files }];
-    }
-    return globalThis.privatePlugins.call(name, args);
+    if (CHANGES.has(name) && scope.getStore())
+      return Promise.reject(Error("In private chats, plugins are managed on the Plugins page."));
+    // Only the documented arguments cross to the app (never signals or chat files).
+    return globalThis.privatePlugins.call(name, args.slice(0, 2));
   };
 export default PluginManager;

@@ -13,7 +13,7 @@ import { moduleOf } from "./imports.mjs";
 import { bindPtcHost } from "./ptc-rpc.mjs";
 import { bindShellHost } from "./shell-rpc.mjs";
 import { privateExecution } from "./execution-service.mjs";
-import { bindSearchHost } from "./search-rpc.mjs";
+import { bindWebHost } from "./web-rpc.mjs";
 import { familyIds, savedSessions } from "./session-family.mjs";
 import { Worker } from "node:worker_threads";
 import { PrivateMcp } from "./mcp-broker.mjs";
@@ -46,6 +46,7 @@ export class PrivateRuntime {
       executionRoot: this.hostOptions.executionRoot,
       inventory: () => this.call("plugin-inventory"),
       onEvent: (event, value) => this.worker?.postMessage({ type: "plugin-event", event, value }),
+      confirm: async (request) => (await this.onConfirmPlugin?.(request)) === true,
     });
     const { loadProfileDirectory } = await moduleOf("@deepseek-ai/dsh-app-boot");
     this.plugins.profile.startedBundles = loadProfileDirectory(
@@ -76,9 +77,10 @@ export class PrivateRuntime {
     });
     this.stopPtc = bindPtcHost(this.worker, (spec) => this.execution.executePtc(spec));
     this.stopShell = bindShellHost(this.worker, (kind, spec) => this.execution.execute(kind, spec));
-    this.stopSearch = bindSearchHost(this.worker, (request, signal) =>
-      this.backend.bridge().privateSearch(request, signal),
-    );
+    this.stopWeb = bindWebHost(this.worker, {
+      search: (request, signal) => this.backend.bridge().privateSearch(request, signal),
+      fetch: (request, signal) => this.backend.bridge().privateWebFetch(request, signal),
+    });
     this.stopStudioReads = bindStudioImageHost(this.worker, this);
     this.worker.stdout.resume();
     this.worker.stderr.resume();

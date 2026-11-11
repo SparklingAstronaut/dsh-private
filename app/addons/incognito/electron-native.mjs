@@ -7,6 +7,7 @@ import { recoverExecutionDirectories } from "./execution-cleanup.mjs";
 import { recoverPrivateCaches } from "./private-cache.mjs";
 import { installDownloads } from "./downloads.mjs";
 import { chatAction } from "./chat-actions.mjs";
+import { settings } from "../../portable-paths.mjs";
 import { app, BrowserWindow, WebContentsView, ipcMain, powerMonitor, dialog } from "electron";
 import fs from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -143,6 +144,26 @@ async function closeInner(entry) {
   app.quit();
   return true;
 }
+// A plugin installed or enabled in private mode runs with full access, so the user decides.
+async function confirmPlugin(entry, { action, name }) {
+  const zh = settings.locale === "zh-CN";
+  const label = String(name).slice(0, 200);
+  const install = action === "install";
+  const answer = await dialog.showMessageBox(entry.window, {
+    type: "warning",
+    message: zh
+      ? `在无痕模式中${install ? "安装" : "启用"}「${label}」？`
+      : `${install ? "Install" : "Enable"} "${label}" in private mode?`,
+    detail: zh
+      ? "无痕模式中的插件不受无痕保护：它可以读取所有已解锁的聊天、在电脑上写文件、连接网络。只安装和启用你信任的插件。退出并重新进入无痕模式后生效。"
+      : "Plugins in private mode are not covered by its protections: a plugin can read every unlocked chat, write files on this computer and connect to the network. Only install and enable plugins you trust. The change takes effect after you exit and re-enter private mode.",
+    buttons: zh ? ["取消", install ? "安装" : "启用"] : ["Cancel", install ? "Install" : "Enable"],
+    defaultId: 0,
+    cancelId: 0,
+    noLink: true,
+  });
+  return answer.response === 1;
+}
 async function startNative(entry) {
   const runtime = new PrivateRuntime(entry.backend);
   entry.runtime = runtime;
@@ -154,6 +175,7 @@ async function startNative(entry) {
     });
     return result.canceled ? null : result.filePaths[0];
   };
+  runtime.onConfirmPlugin = (request) => confirmPlugin(entry, request);
   runtime.onImageGenerate = (args) => dispatchPrivateImage(runtime, args);
   runtime.onImageCancel = () => runtime.studio?.cancel(runtime.studioToolSession);
   runtime.onFailure = () => close(entry);

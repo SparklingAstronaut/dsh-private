@@ -1,18 +1,43 @@
 import { resolvePrivatePath } from "../../portable-paths.mjs";
-import { ExecutionFiles } from "./execution-files.mjs";
-import { randomUUID } from "node:crypto";
+import { removeLegacyPluginInputs } from "./execution-cleanup.mjs";
 import { moduleOf } from "./imports.mjs";
+import fs from "node:fs";
 import path from "node:path";
 import { ensurePluginProfile } from "./plugin-profile.mjs";
+
+// Folders that installed plugins were installed from (file: dependencies of the private profile).
+function installedFrom(dir) {
+  try {
+    const manifest = JSON.parse(fs.readFileSync(path.join(dir, "package.json"), "utf8"));
+    return Object.values(manifest.dependencies ?? {})
+      .filter((spec) => typeof spec === "string" && spec.startsWith("file:"))
+      .map((spec) => path.resolve(dir, spec.slice(5)));
+  } catch {
+    return [];
+  }
+}
+
+// What needs the user's go-ahead: a plugin that is installed or enabled in private mode runs with
+// full access (it can read unlocked chats, write files and use the network).
+export function consentRequest(method, args) {
+  if (method === "installBundle") return { action: "install", name: String(args[0] ?? "") };
+  if ((method === "setBundleEnabled" || method === "setPluginEnabled") && args[1] === true)
+    return { action: "enable", name: String(args[0] ?? "") };
+  return null;
+}
+
 export async function createPrivatePluginManager({
   root,
   executionRoot = resolvePrivatePath("private/Executions"),
   inventory = async () => [],
   onEvent = () => {},
   startedBundles = [],
+  // Asks the user; without a way to ask, nothing is installed or enabled.
+  confirm = async () => false,
 } = {}) {
   const profile = ensurePluginProfile(root);
-  const inputs = new ExecutionFiles(path.join(executionRoot, "plugin-install-" + randomUUID()));
+  // Preview 7 and earlier left copies of chat files here after a plugin install from a chat.
+  removeLegacyPluginInputs(executionRoot, installedFrom(profile.dir));
   profile.startedBundles = [...startedBundles];
   const { Context } = await moduleOf("@deepseek-ai/cordis");
   const { PluginManager } = await moduleOf("@deepseek-ai/dsh-plugin-manager");
@@ -46,13 +71,11 @@ export async function createPrivatePluginManager({
     profile,
     async call(method, args = []) {
       if (closing || !methods.has(method)) throw Error("Private plugin operation unavailable");
-      if ((method === "installBundle" || method === "inspect") && args[2]) {
-        const state = args[2];
-        if (typeof args[0] !== "string" || !path.isAbsolute(args[0]))
-          throw Error("Private package requires an absolute path");
-        const prepared = inputs.prepare(state.sessionId, args[0], state.files);
-        args = [prepared.workdir, args[1]];
-      }
+      // Files from a chat are never installed as a plugin; packages come from the Plugins page.
+      if (args.length > 2) throw Error("Install plugins from the Plugins page.");
+      const request = consentRequest(method, args);
+      if (request && !(await confirm(request))) throw Error("Cancelled.");
+      if (closing) throw Error("Private plugin operation unavailable");
       if (method === "installBundle" && typeof args[0] === "string" && path.isAbsolute(args[0]))
         args = ["file:" + args[0], ...args.slice(1)];
       return manager[method](...args);

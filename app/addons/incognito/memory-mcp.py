@@ -1,20 +1,23 @@
-from portable_paths import private_path
-
-"""Run one private MCP tool server over a process-local, in-memory filesystem.
+"""Run one private MCP tool server.
 
 "documents" is built in. Any other server is an adapter the user configured in settings.json under
-mcp.adapters: a Python file that defines create_server(context) and returns a FastMCP server. It is
-loaded only after the in-memory filesystem and the audit hook below are active, so it can read its
-own folder and the read-only folders listed for it, but cannot write to disk or start programs.
+mcp.adapters: a Python file that defines create_server(context) and returns a FastMCP server.
+
+Before any adapter or third-party package runs, this process lowers itself to the Windows
+Untrusted integrity level (process_guard.py), so Windows refuses its writes to files and the
+registry, also from native code. Python file access then goes to an in-memory filesystem
+(pyfakefs) whose new files come back to the chat. This is not a full sandbox: an adapter can still
+read files your Windows account can read and use the network, so only add adapters you trust.
 """
+
+from portable_paths import private_path
+from process_guard import drop_to_untrusted
 import os, sys, json, base64, logging, hashlib, re, site, importlib.util
 from pathlib import Path
 from types import SimpleNamespace
 
 MCP_SETTINGS = json.loads(os.environ.get("DSH_PRIVATE_SETTINGS", "{}")).get("mcp") or {}
 SITE_PACKAGES = MCP_SETTINGS.get("sitePackages") or ""
-if SITE_PACKAGES:
-    site.addsitedir(SITE_PACKAGES)
 OWNER = os.environ.get("PRIVATE_OWNER")
 if OWNER not in ("model-a", "model-b"):
     raise RuntimeError("Private model required")
@@ -45,6 +48,10 @@ if os.name == "nt" and os.environ.get("PRIVATE_PARENT_PID"):
         os._exit(0)
 
     threading.Thread(target=watch_parent, daemon=True).start()
+# The parent handle above is opened first; from here on, nothing this process runs can write.
+drop_to_untrusted()
+if SITE_PACKAGES:
+    site.addsitedir(SITE_PACKAGES)
 if SERVER == "documents":
     import pypdf, docx, openpyxl, io, zipfile, xml.etree.ElementTree
 from pyfakefs.fake_filesystem_unittest import Patcher
