@@ -221,7 +221,7 @@ async function open(contents) {
     if (!win || !bridge) return;
     await bridge.canEnter();
     // Programs started for private chats must inherit the crash-dump setting (crash-dumps.mjs).
-    await Promise.race([globalThis[crashDumpsKey], delay(20000)]);
+    await Promise.race([globalThis[crashDumpsKey]?.(), delay(20000)]);
     globalThis[activeKey] = true;
     await bridge.stop();
     const view = new WebContentsView({

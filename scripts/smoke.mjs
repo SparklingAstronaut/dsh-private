@@ -5,7 +5,7 @@ import path from "node:path";
 import http from "node:http";
 import assert from "node:assert/strict";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
 const build = path.resolve(process.argv[2] || "dist/DSH-Private");
 const root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), "dsh-private-smoke-")));
@@ -505,8 +505,25 @@ try {
   } finally {
     await plugins.close();
   }
+  // Crash dumps: the app holds SEM_NOGPFAULTERRORBOX through the build's koffi, so a program started
+  // after something cleared the mode still inherits it and saves no Windows crash dump.
+  if (process.platform === "win32") {
+    const dumps = await importApp("addons/incognito/crash-dumps.mjs");
+    const api = dumps.nativeErrorMode(path.join(build, "resources/app"));
+    assert(api, "The build's koffi must reach the Windows error mode");
+    dumps.holdCrashDumpsOff(api);
+    api.set(api.get() & ~0x3);
+    const child = spawn(process.execPath, ["-e", "setTimeout(() => {}, 30000)"], { stdio: "ignore" });
+    try {
+      const mode = await dumps.errorMode(child.pid);
+      assert.equal(mode.ok, true, mode.error);
+      assert.ok(mode.after & dumps.SEM_NOGPFAULTERRORBOX, "A started program must save no crash dump");
+    } finally {
+      child.kill();
+    }
+  }
   console.log(
-    "PASS encrypted cache, filesystem/MCP/execution adapters, portable runtime, authenticated UI, chat, encrypted readback, clean reopen, genuine unsaved changes, explicit save, network boundary, program switch, plugin consent, and shutdown.",
+    "PASS encrypted cache, filesystem/MCP/execution adapters, portable runtime, authenticated UI, chat, encrypted readback, clean reopen, genuine unsaved changes, explicit save, network boundary, program switch, plugin consent, crash-dump setting, and shutdown.",
   );
 } finally {
   await runtime?.stop().catch(() => {});

@@ -2,7 +2,8 @@ param([Parameter(Mandatory = $true)][int]$TargetPid, [switch]$Set)
 # Reads, and with -Set adds SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX to, the Windows error mode
 # of a DSH Private process. With SEM_NOGPFAULTERRORBOX a crash ends the process without Windows Error
 # Reporting, so Windows saves no crash dump (a copy of the program's memory). Programs the process
-# starts afterwards inherit the mode. Prints the mode before and after, e.g. "0x8000 0x8003".
+# starts afterwards inherit the mode. Prints the mode before and after as GetErrorMode reports it,
+# e.g. "0x8001 0x8003". (Windows stores SEM_FAILCRITICALERRORS inverted in the native value.)
 $ErrorActionPreference = 'Stop'
 Add-Type -TypeDefinition @"
 using System;
@@ -18,15 +19,17 @@ public static class DshPrivateErrorMode {
     IntPtr h = OpenProcess(set ? 0x0600u : 0x0400u, false, pid);
     if (h == IntPtr.Zero) throw new Exception("OpenProcess failed " + Marshal.GetLastWin32Error());
     try {
-      uint before;
-      int status = NtQueryInformationProcess(h, ProcessDefaultHardErrorMode, out before, 4, IntPtr.Zero);
+      // The native value has bit 0 (SEM_FAILCRITICALERRORS) inverted, as in kernel32's GetErrorMode.
+      uint raw;
+      int status = NtQueryInformationProcess(h, ProcessDefaultHardErrorMode, out raw, 4, IntPtr.Zero);
       if (status != 0) throw new Exception("query failed 0x" + status.ToString("X"));
-      uint after = before;
+      uint before = raw ^ 0x1, after = before;
       if (set) {
-        after = before | 0x3;
-        status = NtSetInformationProcess(h, ProcessDefaultHardErrorMode, ref after, 4);
+        raw = (before | 0x3) ^ 0x1;
+        status = NtSetInformationProcess(h, ProcessDefaultHardErrorMode, ref raw, 4);
         if (status != 0) throw new Exception("set failed 0x" + status.ToString("X"));
-        NtQueryInformationProcess(h, ProcessDefaultHardErrorMode, out after, 4, IntPtr.Zero);
+        NtQueryInformationProcess(h, ProcessDefaultHardErrorMode, out raw, 4, IntPtr.Zero);
+        after = raw ^ 0x1;
       }
       return "0x" + before.ToString("X") + " 0x" + after.ToString("X");
     } finally {

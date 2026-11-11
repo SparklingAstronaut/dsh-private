@@ -5,7 +5,7 @@ import { app } from "electron";
 import { LEGACY_SLOT_FOLDERS, LOCAL_API_KEY_ENV, LOCAL_PROVIDER } from "./model-slots.mjs";
 import { strictRequested, strictSettings } from "./strict-mode.mjs";
 import { SAFE_MODE_ARGUMENT, normalWelcomeVersion, prepareSafeModeHome } from "./safe-mode-home.mjs";
-import { preventCrashDumps } from "./addons/incognito/crash-dumps.mjs";
+import { crashDumpGuard } from "./addons/incognito/crash-dumps.mjs";
 const root = fileURLToPath(new URL("./", import.meta.url));
 const data = path.resolve(
   process.env.DSH_PRIVATE_DATA_ROOT || path.join(app.getPath("appData"), "DSH-Private"),
@@ -18,12 +18,13 @@ const strict = strictRequested(process.argv, config);
 const effective = strict ? strictSettings(config) : config;
 process.env.DSH_PRIVATE_DATA_ROOT = data;
 process.env.DSH_PRIVATE_SETTINGS = JSON.stringify(effective);
-// Crash dumps (crash-dumps.mjs): started first, so the programs the app starts later inherit it.
-// Entering private mode waits for it.
-globalThis[Symbol.for("dsh.private.crashDumps")] = preventCrashDumps().then((result) => {
+// Crash dumps (crash-dumps.mjs): set first, so the programs the app starts inherit it. Private mode
+// confirms it each time before it opens.
+const crashDumps = crashDumpGuard(path.resolve(root, "../../app"));
+globalThis[Symbol.for("dsh.private.crashDumps")] = crashDumps;
+crashDumps().then((result) => {
   if (!result.ok && !result.skipped)
-    console.warn("[DSH Private] crash dumps not turned off: " + result.error);
-  return result;
+    console.warn("[DSH Private] crash dumps not turned off: " + (result.error ?? result.mode));
 });
 process.env.DSH_PRIVATE_APP_ROOT = root;
 process.env.DSH_PRIVATE_DESKTOP_ROOT = path.resolve(root, "../../app");

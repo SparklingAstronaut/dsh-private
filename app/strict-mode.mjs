@@ -1,8 +1,8 @@
 // Strict mode runs only DSH, the private-mode core and your local model server. Start the app with
 // --strict, or set "strictMode": true in settings.json, to use it.
 //
-// - No plugins run: normal DSH starts in its own Safe Mode, a fresh, disposable home without the
-//   plugins you added (safe-mode-home.mjs), and private mode loads no plugins either.
+// - No plugins you added run: normal DSH starts in its own Safe Mode, a fresh, disposable home
+//   without them (safe-mode-home.mjs), and private mode loads only DSH's own bundles.
 // - No tool adapters start (settings.json "mcp" is ignored).
 // - No web or program tools, whatever "webAccess" and "shellAccess" say.
 // - Private chats use the built-in model connection ("provider" and "modelEngine" are ignored). It
