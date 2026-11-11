@@ -328,6 +328,19 @@ try {
   await runtime.start();
   await authenticate();
   const savedRows = () => savedSessions(backend.vault.snapshot().filter((row) => row.saved));
+  // Event types per chat, for a failure message that shows what differs from the saved copy.
+  const explainRows = (rows, saved) =>
+    JSON.stringify(
+      rows.map((row) => {
+        const before = saved.find((s) => s.header.id === row.header.id);
+        return {
+          id: row.header.id.slice(0, 8),
+          events: row.events.map((e) => e.type).join(","),
+          saved: before?.events.map((e) => e.type).join(",") ?? null,
+          files: Object.keys(row.files ?? {}).length,
+        };
+      }),
+    );
   // The desktop opens a blank session before the user selects a saved chat.
   await rpc("session/create", {
     request: { workspaceId: workspaces.workspace.workspaceId, agentPreset: "standard" },
@@ -357,7 +370,8 @@ try {
   assert.equal(
     hasUnsavedChanges(snapshot.sessions, savedRows()),
     false,
-    "Reopening and reading a saved chat must not mark it unsaved",
+    "Reopening and reading a saved chat must not mark it unsaved: " +
+      explainRows(snapshot.sessions, savedRows()),
   );
   assert(
     fs.readFileSync(backend.vault.file).equals(savedSession),
@@ -432,6 +446,10 @@ try {
   await probe("SYNTHETIC_REDIRECT_PROBE", (events) => events.some((e) => e.type === "turn/end"));
   assert(redirectedModelRequests >= 1, "The redirect probe must reach the model server");
   assert.deepEqual(outside, [], "Nothing may reach a server other than the local model");
+  console.log(
+    "Blocked network attempts in the private chat process:",
+    (await runtime.call("status")).blockedNetwork,
+  );
   await runtime.stop();
   runtime = null;
   backend.lock();
