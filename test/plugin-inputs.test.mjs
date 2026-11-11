@@ -112,3 +112,35 @@ test("plugin changes that need the user's go-ahead", async () => {
     else process.env.DSH_PRIVATE_DESKTOP_ROOT = previous;
   }
 });
+
+test("strict mode installs nothing and its profile keeps only DSH's own bundles", async () => {
+  const previous = process.env.DSH_PRIVATE_DESKTOP_ROOT;
+  process.env.DSH_PRIVATE_DESKTOP_ROOT ??= os.tmpdir();
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "dsh-strict-plugins-"));
+  try {
+    const { strictInstallRefused } = await import("../app/addons/incognito/plugin-host.mjs");
+    const refused = strictInstallRefused(["synthetic-plugin", { enabled: false }], "zh-CN");
+    assert.equal(refused.application, "failed");
+    assert.equal(refused.changed, false);
+    assert.match(refused.error.diagnostic, /严格模式下不能安装插件/);
+    const { ensureStrictPluginProfile } = await import("../app/addons/incognito/plugin-profile.mjs");
+    const profile = ensureStrictPluginProfile(root);
+    const manifestPath = path.join(profile.dir, "package.json");
+    const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+    assert.deepEqual(manifest.dependencies, {});
+    // A package that got into the strict profile anyway is never loaded: the profile is recreated.
+    manifest.dependencies = { "synthetic-plugin": "file:../synthetic-plugin" };
+    manifest.dsh.profile.bundles.push("synthetic-plugin");
+    fs.writeFileSync(manifestPath, JSON.stringify(manifest));
+    fs.writeFileSync(path.join(root, "leftover.txt"), "SYNTHETIC");
+    ensureStrictPluginProfile(root);
+    const fresh = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+    assert.deepEqual(fresh.dependencies, {});
+    assert.deepEqual(fresh.dsh.profile.bundles, ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-web-app"]);
+    assert.equal(fs.existsSync(path.join(root, "leftover.txt")), false);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+    if (previous === undefined) delete process.env.DSH_PRIVATE_DESKTOP_ROOT;
+    else process.env.DSH_PRIVATE_DESKTOP_ROOT = previous;
+  }
+});

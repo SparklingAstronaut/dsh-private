@@ -1,4 +1,4 @@
-import { localModelUrl } from "../../portable-paths.mjs";
+import { localModelUrl, resolvePrivatePath, settings as appSettings } from "../../portable-paths.mjs";
 import { bindStudioImageHost } from "./studio-image-rpc.mjs";
 import { shutdownPrivateRuntime } from "./runtime-shutdown.mjs";
 import { createPrivateStudioSession } from "./studio-session.mjs";
@@ -41,8 +41,13 @@ export class PrivateRuntime {
     this.stopTask = null;
     recoverPrivateCaches();
     recoverExecutionDirectories(this.hostOptions.executionRoot);
+    // Strict mode uses a separate private plugin profile that holds only DSH's own bundles.
+    const strict = appSettings.strictMode === true;
     this.plugins = await createPrivatePluginManager({
-      root: this.hostOptions.pluginRoot,
+      root: strict
+        ? (this.hostOptions.strictPluginRoot ?? resolvePrivatePath("private/Plugins-strict"))
+        : this.hostOptions.pluginRoot,
+      strict,
       executionRoot: this.hostOptions.executionRoot,
       inventory: () => this.call("plugin-inventory"),
       onEvent: (event, value) => this.worker?.postMessage({ type: "plugin-event", event, value }),
@@ -155,7 +160,9 @@ export class PrivateRuntime {
         }
         if (m.type === "boot-error") {
           clearTimeout(timer);
-          reject(Error("DSH 无痕服务启动失败。"));
+          reject(
+            Error("DSH 无痕服务启动失败。" + (typeof m.error === "string" ? m.error.slice(0, 200) : "")),
+          );
         }
       });
       this.worker.once("error", () => {

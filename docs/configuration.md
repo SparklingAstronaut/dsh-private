@@ -2,7 +2,7 @@
 
 The password gate's Connection panel sets `baseUrl`, `modelA`, `modelB`, and `locale` (`en-US` or `zh-CN`). Model IDs must exactly match `/models` from the user's running local server. Model A and B may use the same ID. Internally the slots are `model-a` and `model-b`; archives written by Preview 1–3 used the names Heretic and QQZ and are read as Model A and Model B. The underlying model IDs are user-configured.
 
-Advanced settings live in `%APPDATA%\DSH-Private\settings.json`. Close the app before manual editing. `vision: true` advertises image input only if your selected local model supports it. `contextWindow` (default 32768) and `maxTokens` (default 4096) should match what your local server allows. `disableGpu: true` turns off the app's own graphics acceleration, so its window uses no video memory that your local model or image jobs need. Do not store credentials here; the built-in chat connector requires no remote API keys.
+Advanced settings live in `%APPDATA%\DSH-Private\settings.json`. Close the app before manual editing. `vision: true` advertises image input only if your selected local model supports it. `contextWindow` (default 32768) and `maxTokens` (default 4096) should match what your local server allows. `disableGpu: true` turns off the app's own graphics acceleration, so its window uses no video memory that your local model or image jobs need. `modelServer` lets the app start your model server itself (see [Model server](#model-server)), and `strictMode: true` always starts in [strict mode](#strict-mode). Do not store credentials here; the built-in chat connector requires no remote API keys.
 
 Optional integrations are retained as source but not automatically configured in this preview:
 
@@ -14,7 +14,7 @@ Do not copy another user's `settings.json`, credentials, plugins, or vault into 
 
 `DSH_PRIVATE_DATA_ROOT` selects a different data directory before launch. Set it before starting the app and keep it the same afterwards. To keep only the encrypted archives and private working folders elsewhere, for example on an external drive, set `"privateRoot"` in `settings.json` to an absolute folder. If that drive is not connected, private mode stays locked; normal mode still starts.
 
-If a local model provider is already configured in DSH, for example by a local model plugin, set `"provider"` to its ID to reuse it for private chats. The core copies its settings (model names, context sizes, reasoning options) for Model A and Model B only. Its base URL must equal the loopback URL in Connection, and the built-in "Local model" entry is then not added to normal mode.
+If a local model provider is already configured in DSH, for example by a local model plugin, set `"provider"` to its ID to reuse it for private chats (not in strict mode). The core copies its settings (model names, context sizes, reasoning options) for Model A and Model B only. Its base URL must equal the loopback URL in Connection, and the built-in "Local model" entry is then not added to normal mode.
 
 ## Network and programs
 
@@ -24,6 +24,31 @@ The private chat process connects only to the local model server set in Connecti
 - `"shellAccess": true` adds PowerShell, the terminal, PTC programs and workflows, and the PTC and Minimal modes. These run as real programs on your computer. DSH's sandbox limits where they write, not where they connect, so a command can send chat content anywhere. Without this setting the app also refuses to start a program for a private chat, whichever tool asks.
 
 Private tool adapters and plugins have their own rules, described below. Restart the app after changing these settings.
+
+## Strict mode
+
+Strict mode runs only DSH, the private-mode core and your local model server. Start `DSH Private.exe --strict` (for example from a second shortcut), or set `"strictMode": true` to always start this way. The window title then reads **DSH Private · Strict mode**.
+
+- No plugins run. Normal DSH starts in its own Safe Mode: a fresh home, without the plugins you added, that is deleted when the app exits. Private mode loads no plugins and has no Plugins page.
+- No tool adapters start, and the AI gets no web or program tools, whatever `mcp`, `webAccess` and `shellAccess` say.
+- Private chats use the built-in model connection; `provider` and `modelEngine` are ignored. Your model server must be running, or the app starts it from `modelServer`.
+- Private Studio is not available, because it needs an image plugin.
+
+Your vault, settings and saved chats are the same in both modes. The internal-testing notice you acknowledged in normal mode stays acknowledged.
+
+## Model server
+
+Without a model plugin, the app checks that your server already serves the selected model. With `modelServer`, it starts the server for Model A or Model B when private mode needs it and stops it when private mode ends:
+
+```json
+{
+  "modelServer": {
+    "a": { "command": ["C:/llama/llama-server.exe", "-m", "C:/models/model-a.gguf", "--host", "127.0.0.1", "--port", "8080"] }
+  }
+}
+```
+
+`command` is the program (an absolute path) and its arguments; `"cwd"` is optional and defaults to the program's folder. The server must listen on the Connection URL and serve the model ID set for that model. Its output is discarded. A server you start yourself is used as it is and never stopped by the app.
 
 ## Plugins
 

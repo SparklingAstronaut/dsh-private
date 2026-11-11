@@ -3,6 +3,9 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { app } from "electron";
 import { LEGACY_SLOT_FOLDERS, LOCAL_API_KEY_ENV, LOCAL_PROVIDER } from "./model-slots.mjs";
+import { strictRequested, strictSettings } from "./strict-mode.mjs";
+import { SAFE_MODE_ARGUMENT, normalWelcomeVersion, prepareSafeModeHome } from "./safe-mode-home.mjs";
+import { preventCrashDumps } from "./addons/incognito/crash-dumps.mjs";
 const root = fileURLToPath(new URL("./", import.meta.url));
 const data = path.resolve(
   process.env.DSH_PRIVATE_DATA_ROOT || path.join(app.getPath("appData"), "DSH-Private"),
@@ -10,8 +13,18 @@ const data = path.resolve(
 fs.mkdirSync(data, { recursive: true });
 const configFile = path.join(data, "settings.json");
 const config = fs.existsSync(configFile) ? JSON.parse(fs.readFileSync(configFile, "utf8")) : {};
+// Strict mode (strict-mode.mjs): every part of the app sees the reduced settings.
+const strict = strictRequested(process.argv, config);
+const effective = strict ? strictSettings(config) : config;
 process.env.DSH_PRIVATE_DATA_ROOT = data;
-process.env.DSH_PRIVATE_SETTINGS = JSON.stringify(config);
+process.env.DSH_PRIVATE_SETTINGS = JSON.stringify(effective);
+// Crash dumps (crash-dumps.mjs): started first, so the programs the app starts later inherit it.
+// Entering private mode waits for it.
+globalThis[Symbol.for("dsh.private.crashDumps")] = preventCrashDumps().then((result) => {
+  if (!result.ok && !result.skipped)
+    console.warn("[DSH Private] crash dumps not turned off: " + result.error);
+  return result;
+});
 process.env.DSH_PRIVATE_APP_ROOT = root;
 process.env.DSH_PRIVATE_DESKTOP_ROOT = path.resolve(root, "../../app");
 process.env.DSH_HOME = path.join(data, "host");
@@ -49,7 +62,7 @@ const { privateModelSettings, hostPlugins } = await import("./model-config.mjs")
 const provider = privateModelSettings()["llm-pi-ai"].providers[LOCAL_PROVIDER];
 // With "provider" set, private chats reuse that normal-mode provider (see host.mjs), so the
 // built-in "Local model" entry is not added to normal mode as well.
-const reuseProvider = typeof config.provider === "string";
+const reuseProvider = typeof effective.provider === "string";
 const overlay = [
   {
     id: "desktop-shell",
@@ -60,7 +73,14 @@ const overlay = [
   { id: "permission", config: { defaultPreset: "workspace-write" } },
   { id: "session-telemetry-otel", disabled: true },
   { id: "desktop-updates", disabled: true },
-  { insert: hostPlugins(root, config) },
+  { insert: hostPlugins(root, effective) },
 ];
-fs.writeFileSync(path.join(data, "host/cordis.patch.yml"), JSON.stringify(overlay, null, 2));
+if (strict) {
+  // Normal DSH runs in its Safe Mode home, without the plugins added to the normal home. The notice
+  // the user already acknowledged there is carried over, so it does not come back every time.
+  const welcome = normalWelcomeVersion(path.join(data, "host/profiles/desktop/cordis.patch.yml"));
+  if (welcome) overlay.push({ id: "ui-settings-general", config: { welcomeNoticeVersion: welcome } });
+  prepareSafeModeHome(app.getPath("userData"), overlay);
+  if (!process.argv.includes(SAFE_MODE_ARGUMENT)) process.argv.push(SAFE_MODE_ARGUMENT);
+} else fs.writeFileSync(path.join(data, "host/cordis.patch.yml"), JSON.stringify(overlay, null, 2));
 await import("./addons/incognito/electron-native.mjs");

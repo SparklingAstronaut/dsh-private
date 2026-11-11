@@ -13,6 +13,11 @@ jobs:
   windows:
     runs-on: windows-latest
     timeout-minutes: 45
+    # id-token and attestations: write let GitHub sign where the package was built (see below).
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -44,6 +49,13 @@ jobs:
         run: python scripts/scan_release.py dist/DSH-Private
       - name: Package verified build
         run: python scripts/package_release.py dist/DSH-Private
+      # A signed record that this ZIP came from this workflow run and commit. Anyone can check a
+      # download with: gh attestation verify <zip> -R SparklingAstronaut/dsh-private
+      - name: Attest where the package was built
+        if: github.event_name != 'pull_request'
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: dist/release/*.zip
       - name: Upload verified Windows package
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:

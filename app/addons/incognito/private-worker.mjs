@@ -42,9 +42,13 @@ const installedProfile = workerData.pluginProfile
 // Host privileges: they can read unlocked chats, write files and use the network. Without them,
 // this process cannot write files, start programs or connect to anything but the local model.
 // DSH-owned chat services always use the memory/encrypted adapters below.
-const trustedPlugins = (installedProfile?.dsh?.profile?.bundles || []).filter((name) =>
-  Object.hasOwn(installedProfile?.dependencies || {}, name),
-);
+// Strict mode's profile holds only DSH's own bundles (plugin-profile.mjs); its limits always apply.
+const trustedPlugins =
+  settings.strictMode === true
+    ? []
+    : (installedProfile?.dsh?.profile?.bundles || []).filter((name) =>
+        Object.hasOwn(installedProfile?.dependencies || {}, name),
+      );
 const blocked = [],
   blockedNetwork = [];
 if (!trustedPlugins.length) {

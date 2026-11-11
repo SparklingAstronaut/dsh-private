@@ -10,6 +10,8 @@ raise its integrity level again, so this holds for everything the process runs a
 import ctypes
 import os
 
+SEM_FAILCRITICALERRORS = 0x0001
+SEM_NOGPFAULTERRORBOX = 0x0002
 TOKEN_QUERY = 0x0008
 TOKEN_ADJUST_DEFAULT = 0x0080
 TOKEN_INTEGRITY_LEVEL = 25
@@ -87,3 +89,22 @@ def drop_to_untrusted():
     finally:
         kernel.CloseHandle(token)
     return True
+
+
+def no_crash_dumps():
+    """Keep Windows from saving a crash dump (a copy of this process's memory) if it crashes.
+
+    With SEM_NOGPFAULTERRORBOX, Windows Error Reporting is skipped for this process and the programs it
+    starts, so a crash leaves no copy of private data in %LOCALAPPDATA%\\CrashDumps. Returns the new error
+    mode, or None off Windows.
+    """
+    if os.name != "nt":
+        return None
+    kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel.GetErrorMode.restype = ctypes.c_uint
+    kernel.SetErrorMode.argtypes = [ctypes.c_uint]
+    kernel.SetErrorMode(kernel.GetErrorMode() | SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX)
+    mode = kernel.GetErrorMode()
+    if not mode & SEM_NOGPFAULTERRORBOX:
+        raise RuntimeError("Could not turn off crash dumps for the tool process")
+    return mode

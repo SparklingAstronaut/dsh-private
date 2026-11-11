@@ -44,3 +44,18 @@ export function ensurePluginProfile(root = resolvePrivatePath("private/Plugins")
     },
   };
 }
+
+// Strict mode's profile holds only DSH's own bundles. Should a package have been added to it anyway
+// (it cannot be from the app in strict mode), the profile is recreated instead of loading it.
+export function ensureStrictPluginProfile(root) {
+  const home = path.resolve(root);
+  try {
+    const manifest = JSON.parse(
+      fs.readFileSync(path.join(home, "profiles", "incognito", "package.json"), "utf8"),
+    );
+    if (Object.keys(manifest.dependencies ?? {}).length) fs.rmSync(home, { recursive: true, force: true });
+  } catch (e) {
+    if (e.code !== "ENOENT") fs.rmSync(home, { recursive: true, force: true });
+  }
+  return ensurePluginProfile(home);
+}

@@ -29,8 +29,33 @@ with open(sys.argv[3]) as f:
 """
 
 
+# Runs in a child process: the error mode is per process and inherited by the programs it starts.
+CRASH_DUMP_PROBE = r"""
+import ctypes, subprocess, sys
+sys.path.insert(0, sys.argv[1])
+from process_guard import no_crash_dumps
+print("before", ctypes.windll.kernel32.GetErrorMode())
+print("after", no_crash_dumps())
+child = subprocess.run([sys.executable, "-I", "-c", "import ctypes; print(ctypes.windll.kernel32.GetErrorMode())"], capture_output=True, text=True)
+print("child", child.stdout.strip())
+"""
+
+
 @unittest.skipUnless(os.name == "nt", "Windows integrity levels")
 class ProcessGuardTest(unittest.TestCase):
+    def test_tool_process_and_its_programs_save_no_crash_dumps(self):
+        run = subprocess.run(
+            [sys.executable, "-I", "-B", "-c", CRASH_DUMP_PROBE, str(APP_PYTHON)],
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+        self.assertEqual(run.returncode, 0, run.stderr)
+        values = dict(line.split() for line in run.stdout.splitlines())
+        # SEM_NOGPFAULTERRORBOX (2): Windows Error Reporting, and with it the crash dump, is skipped.
+        self.assertTrue(int(values["after"]) & 2, run.stdout)
+        self.assertTrue(int(values["child"]) & 2, run.stdout)
+
     def test_tool_process_cannot_write_after_dropping_to_untrusted(self):
         with tempfile.TemporaryDirectory() as folder:
             folder = pathlib.Path(folder)

@@ -6,12 +6,14 @@ mcp.adapters: a Python file that defines create_server(context) and returns a Fa
 Before any adapter or third-party package runs, this process lowers itself to the Windows
 Untrusted integrity level (process_guard.py), so Windows refuses its writes to files and the
 registry, also from native code. Python file access then goes to an in-memory filesystem
-(pyfakefs) whose new files come back to the chat. This is not a full sandbox: an adapter can still
-read files your Windows account can read and use the network, so only add adapters you trust.
+(pyfakefs) whose new files come back to the chat. It also turns off Windows crash dumps for itself
+and the programs it starts, so a crash leaves no copy of its memory on disk. This is not a full
+sandbox: an adapter can still read files your Windows account can read and use the network, so only
+add adapters you trust.
 """
 
 from portable_paths import private_path
-from process_guard import drop_to_untrusted
+from process_guard import drop_to_untrusted, no_crash_dumps
 import os, sys, json, base64, logging, hashlib, re, site, importlib.util
 from pathlib import Path
 from types import SimpleNamespace
@@ -49,6 +51,7 @@ if os.name == "nt" and os.environ.get("PRIVATE_PARENT_PID"):
 
     threading.Thread(target=watch_parent, daemon=True).start()
 # The parent handle above is opened first; from here on, nothing this process runs can write.
+no_crash_dumps()
 drop_to_untrusted()
 if SITE_PACKAGES:
     site.addsitedir(SITE_PACKAGES)

@@ -1,9 +1,10 @@
 // Runs only inside the native titlebar, and holds no chat or password data.
-export function installTitlebar(active = true) {
+// productName is "DSH Private", or with the strict-mode label when the app runs in strict mode.
+export function installTitlebar(active = true, productName = "DSH Private") {
   const render = () => {
     active = true;
     const product = document.querySelector(".dshDesktopFrameProduct");
-    if (product && product.textContent !== "DSH Private") product.textContent = "DSH Private";
+    if (product && product.textContent !== productName) product.textContent = productName;
     document
       .querySelectorAll(
         ".dshDesktopFrameVersion,.dshDesktopVersionCheckButton,.dshDesktopRemoteControl,.dshDesktopSettingsHeaderButton,.dshDesktopNativeActionMenuAnchor,.dshDesktopActionMenu,.dshDesktopTitlebarIconButton",

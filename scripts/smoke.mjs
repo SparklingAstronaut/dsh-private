@@ -4,7 +4,8 @@ import os from "node:os";
 import path from "node:path";
 import http from "node:http";
 import assert from "node:assert/strict";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import { execFileSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
 const build = path.resolve(process.argv[2] || "dist/DSH-Private");
 const root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), "dsh-private-smoke-")));
@@ -517,3 +518,7 @@ try {
   assert(path.basename(root).startsWith("dsh-private-smoke-"));
   fs.rmSync(root, { recursive: true });
 }
+// Strict mode reads its settings once per process, so it is checked in a process of its own.
+execFileSync(process.execPath, [fileURLToPath(new URL("./smoke-strict.mjs", import.meta.url)), build], {
+  stdio: "inherit",
+});

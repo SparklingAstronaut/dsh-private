@@ -3,7 +3,7 @@ import { removeLegacyPluginInputs } from "./execution-cleanup.mjs";
 import { moduleOf } from "./imports.mjs";
 import fs from "node:fs";
 import path from "node:path";
-import { ensurePluginProfile } from "./plugin-profile.mjs";
+import { ensurePluginProfile, ensureStrictPluginProfile } from "./plugin-profile.mjs";
 
 // Packages installed into the private profile: its package.json dependencies.
 function dependenciesOf(dir) {
@@ -67,8 +67,26 @@ export function declined(method, args, locale = settings.locale) {
   throw Error(locale === "zh-CN" ? "已取消，插件保持停用。" : "Cancelled; the plugin stays off.");
 }
 
+// Strict mode installs nothing; the Plugins page shows this as a failed install with the reason.
+export function strictInstallRefused(args, locale = settings.locale) {
+  return {
+    stage: "install",
+    target: String(args[0] ?? ""),
+    enabled: args[1]?.enabled ?? true,
+    changed: false,
+    application: "failed",
+    error: {
+      code: "operation-error",
+      diagnostic:
+        locale === "zh-CN" ? "严格模式下不能安装插件。" : "Plugins cannot be installed in strict mode.",
+    },
+  };
+}
+
 export async function createPrivatePluginManager({
   root,
+  // Strict mode (strict-mode.mjs): DSH's own bundles only, nothing can be installed.
+  strict = false,
   executionRoot = resolvePrivatePath("private/Executions"),
   inventory = async () => [],
   onEvent = () => {},
@@ -76,7 +94,7 @@ export async function createPrivatePluginManager({
   // Asks the user; without a way to ask, nothing is installed or enabled.
   confirm = async () => false,
 } = {}) {
-  const profile = ensurePluginProfile(root);
+  const profile = strict ? ensureStrictPluginProfile(root) : ensurePluginProfile(root);
   // Preview 7 and earlier left copies of chat files here after a plugin install from a chat.
   removeLegacyPluginInputs(executionRoot, installedFrom(profile.dir));
   profile.startedBundles = [...startedBundles];
@@ -114,6 +132,7 @@ export async function createPrivatePluginManager({
       if (closing || !methods.has(method)) throw Error("Private plugin operation unavailable");
       // Files from a chat are never installed as a plugin; packages come from the Plugins page.
       if (args.length > 2) throw Error("Install plugins from the Plugins page.");
+      if (strict && method === "installBundle") return strictInstallRefused(args);
       const request = consentRequest(method, args, dependenciesOf(profile.dir));
       if (request && !(await confirm(request))) return declined(method, args);
       if (closing) throw Error("Private plugin operation unavailable");

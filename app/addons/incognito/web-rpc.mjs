@@ -6,7 +6,7 @@ const KINDS = new Set(["search", "fetch"]);
 // Checked by the app before it searches or fetches for a private chat.
 export function assertWebAllowed(settings, privateModeActive) {
   if (!privateModeActive) throw Error("Private mode is not active");
-  if (settings?.webAccess !== true)
+  if (settings?.webAccess !== true || settings?.strictMode === true)
     throw Error('Web access is off in private mode. Set "webAccess": true in settings.json to allow it.');
 }
 

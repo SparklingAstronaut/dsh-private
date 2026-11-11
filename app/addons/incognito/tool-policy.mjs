@@ -26,8 +26,10 @@ const PRESET = "@deepseek-ai/dsh-agent-preset";
 const isGroup = (row) => Array.isArray(row?.config) && (row.group === true || row.name === "cordis:group");
 
 export function toolPolicy(settings = {}) {
-  const web = settings?.webAccess === true,
-    programs = settings?.shellAccess === true;
+  // Strict mode (strict-mode.mjs) has neither, whatever the two settings say.
+  const strict = settings?.strictMode === true;
+  const web = !strict && settings?.webAccess === true,
+    programs = !strict && settings?.shellAccess === true;
   return {
     web,
     programs,

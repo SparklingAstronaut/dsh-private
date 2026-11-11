@@ -56,7 +56,7 @@ Open the app, unlock, and talk to your own local model. Conversations are tempor
 
 ## Get started
 
-**You need:** Windows 10/11 x64 and your own local OpenAI-compatible model server. The ZIP includes the app runtime; model weights and a model server are not included. This preview is unsigned.
+**You need:** Windows 10/11 x64 and your own local OpenAI-compatible model server. The ZIP includes the app runtime; model weights and a model server are not included. This preview is unsigned; to check that a download was built from this repository, see [Privacy and security](SECURITY.md).
 
 1. **Download and extract.** Unpack the **entire** ZIP into a writable local folder, then run `DSH Private.exe`.
 2. **Connect a local model.** Start your model server. On the password screen, expand **Connection**, enter its loopback API URL (for example `http://127.0.0.1:1234/v1`), detect or enter its model ID, then save and restart. Model B is optional.
@@ -88,7 +88,7 @@ Saved archives use **AES-256-GCM** encryption with scrypt-derived keys. Only exp
 
 **Before upgrading:** close the app and back up its data directory. Keep the vault password separately. DSH Private does not automatically migrate another installation's archives. Archives from Preview 1–3 open normally; once Preview 4 or later saves them, they store the neutral slot names `model-a` / `model-b` and can no longer be opened by Preview 1–3.
 
-The local model server runs separately: closing DSH Private does not stop it or erase its logs. Connection settings and operational logs are not encrypted. Private chats connect only to your local model; web search and programs that could send chat content elsewhere stay off unless you turn them on (`webAccess`, `shellAccess`), and tool adapters and plugins you add can access files or networks. This is a developer-tested preview, not an independently audited security product or a guarantee of forensic erasure. Read the [privacy and security boundaries](SECURITY.md) before using sensitive data.
+A model server you start yourself runs separately: closing DSH Private does not stop it or erase its logs. Connection settings and operational logs are not encrypted. Private chats connect only to your local model; web search and programs that could send chat content elsewhere stay off unless you turn them on (`webAccess`, `shellAccess`), and tool adapters and plugins you add can access files or networks. This is a developer-tested preview, not an independently audited security product or a guarantee of forensic erasure. Read the [privacy and security boundaries](SECURITY.md) before using sensitive data.
 
 ## Explore the project
 

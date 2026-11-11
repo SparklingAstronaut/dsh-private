@@ -53,7 +53,7 @@ node scripts/smoke.mjs "dist/DSH-Private"
 
 The tests cover encrypted temporary caches, killed-process recovery, active-owner preservation, link rejection, large-file save/reopen, wrong passwords, shutdown failures, and genuine versus false unsaved changes. Build tests reject changed upstream files, missing or modified output files, and dirty release sources.
 
-The smoke check uses a mock local chat endpoint and a fresh synthetic vault. It exercises the packaged filesystem, MCP and execution-file adapters, the real private service, chat, encrypted readback, clean reopening, and shutdown. It removes its fixture and does not use your real model or vault.
+The smoke check uses a mock local chat endpoint and a fresh synthetic vault. It exercises the packaged filesystem, MCP and execution-file adapters, the real private service, chat, encrypted readback, clean reopening, and shutdown, then checks strict mode in a second process (no plugins or installs, no web or program tools). It removes its fixture and does not use your real model or vault.
 
 Verify the complete build and package it:
 
@@ -66,7 +66,7 @@ python scripts/package_release.py "dist/DSH-Private"
 
 ## Public verification
 
-The [Windows workflow](https://github.com/SparklingAstronaut/dsh-private/actions/workflows/verify.yml) runs on pushes to `main`, pull requests, and manual dispatch. It uses actions pinned to commit hashes, read-only repository permissions, and synthetic data. A successful run uploads the tested Windows ZIP, its checksum, and `build-verification.json` for 14 days. Release notes link to the exact successful run; release assets remain available independently of CI artifact retention.
+The [Windows workflow](https://github.com/SparklingAstronaut/dsh-private/actions/workflows/verify.yml) runs on pushes to `main`, pull requests, and manual dispatch. It uses actions pinned to commit hashes, read-only repository permissions, and synthetic data. A successful run uploads the tested Windows ZIP, its checksum, and `build-verification.json` for 14 days. Except on pull requests, it also has GitHub sign a build provenance attestation for the ZIP (the only write permissions the job has), which `gh attestation verify <zip> -R SparklingAstronaut/dsh-private` checks. Release notes link to the exact successful run; release assets remain available independently of CI artifact retention.
 
 These checks make the build inputs and tested output inspectable. They do not constitute a code signature, an independent security audit, or a claim that every optional external integration is covered.
 

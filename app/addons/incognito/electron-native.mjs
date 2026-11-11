@@ -20,7 +20,15 @@ const root = path.dirname(fileURLToPath(import.meta.url)),
   entries = new Map();
 process.env.DSH_DESKTOP_ISOLATED_HOST = "0";
 const activeKey = Symbol.for("dsh.incognito.active"),
-  bridgeKey = Symbol.for("dsh.incognito.bridge");
+  bridgeKey = Symbol.for("dsh.incognito.bridge"),
+  crashDumpsKey = Symbol.for("dsh.private.crashDumps");
+// Strict mode (strict-mode.mjs) says so in the title bar.
+const productName =
+  settings.strictMode === true
+    ? settings.locale === "zh-CN"
+      ? "DSH Private · 严格模式"
+      : "DSH Private · Strict mode"
+    : "DSH Private";
 // DSH Private keeps the ordinary host disabled for its entire lifetime.
 globalThis[activeKey] = true;
 let quitting = false;
@@ -212,6 +220,8 @@ async function open(contents) {
   try {
     if (!win || !bridge) return;
     await bridge.canEnter();
+    // Programs started for private chats must inherit the crash-dump setting (crash-dumps.mjs).
+    await Promise.race([globalThis[crashDumpsKey], delay(20000)]);
     globalThis[activeKey] = true;
     await bridge.stop();
     const view = new WebContentsView({
@@ -461,7 +471,9 @@ app.on("web-contents-created", (_event, contents) => {
   contents.on("did-finish-load", () => {
     if (chrome(contents))
       contents
-        .executeJavaScript(`(${installTitlebar.toString()})(${JSON.stringify(!!globalThis[activeKey])})`)
+        .executeJavaScript(
+          `(${installTitlebar.toString()})(${JSON.stringify(!!globalThis[activeKey])}, ${JSON.stringify(productName)})`,
+        )
         .catch(() => {});
   });
 });
