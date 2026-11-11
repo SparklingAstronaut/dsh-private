@@ -21,7 +21,7 @@ If a local model provider is already configured in DSH, for example by a local m
 The private chat process connects only to the local model server set in Connection. It cannot write files or start programs, and a model request that the server redirects elsewhere fails. By default the AI in a private chat has no tool that can send chat content off this computer. Two settings add such tools:
 
 - `"webAccess": true` adds web search and page fetching. The app carries them out outside the private chat process: searches use the search service configured in DSH (DeepSeek by default), and pages are fetched from public addresses only. The AI chooses the queries and addresses, so they can contain anything from the chat.
-- `"shellAccess": true` adds PowerShell, the terminal, PTC programs and workflows, and the PTC and Minimal modes. These run as real programs on your computer. DSH's sandbox limits where they write, not where they connect, so a command can send chat content anywhere.
+- `"shellAccess": true` adds PowerShell, the terminal, PTC programs and workflows, and the PTC and Minimal modes. These run as real programs on your computer. DSH's sandbox limits where they write, not where they connect, so a command can send chat content anywhere. Without this setting the app also refuses to start a program for a private chat, whichever tool asks.
 
 Private tool adapters and plugins have their own rules, described below. Restart the app after changing these settings.
 
@@ -34,7 +34,7 @@ DSH Private is DSH with a private-mode core, so DSH plugins can be added to its 
 - `privateEntryGuard` with `isBusy()`: keeps private mode closed while the plugin's own normal-mode job is still running.
 - `localIncognitoEngine` with `snapshot()`, `selectPrivate(slot)`, `isPrivate()`, `activity()` and `stop()`: starts and stops local models for private mode. The built-in engine only checks that your server already serves the model. To let a plugin manage models instead, set `"modelEngine": "plugin"` in `settings.json`. Private chats still go only to the loopback server set in Connection.
 
-The Plugins page inside private mode installs plugins into private mode itself. Such a plugin runs inside the private chat process with full access: it can read every unlocked chat, write files and connect to the network, and the process's file, program and network limits no longer apply while it is enabled. The app asks for confirmation before it installs or enables one. The AI cannot install or enable plugins from a chat, and files from a chat are never installed as a plugin.
+The Plugins page inside private mode installs plugins into private mode itself. Such a plugin runs inside the private chat process with full access: it can read every unlocked chat, write files and connect to the network, and the process's file, program and network limits no longer apply while it is enabled. The app asks before it installs one and again before it enables it; nothing is installed or enabled if you cancel. DSH's own optional features listed on that page are part of the app and keep the private chat process's limits, so switching them on does not ask. The AI cannot install or enable plugins from a chat, and files from a chat are never installed as a plugin.
 
 ## Private Studio
 

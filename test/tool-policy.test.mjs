@@ -1,6 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { applyToolPolicy } from "../app/addons/incognito/tool-policy.mjs";
+import {
+  applyToolPolicy,
+  assertProgramsAllowed,
+  shellTimeout,
+} from "../app/addons/incognito/tool-policy.mjs";
 
 // The shapes DSH 2.0.14 uses: its web app bundle inserts one @deepseek-ai/dsh-agent-preset entry
 // per mode, with the tools as rows of config.plugins (groups nest rows in config).
@@ -96,4 +100,18 @@ test("a saved edit of a mode's tool list is held to the same rules", () => {
   };
   applyToolPolicy([edit], {});
   assert.equal(edit.config.plugins[0].disabled, true);
+});
+
+test("the app runs programs for a private chat only with shellAccess on", () => {
+  for (const settings of [{}, { shellAccess: "true" }, { webAccess: true }, null])
+    assert.throws(() => assertProgramsAllowed(settings), /Programs are off/);
+  assert.doesNotThrow(() => assertProgramsAllowed({ shellAccess: true }));
+});
+
+test("a PowerShell command gets DSH's default time limit when the AI names none", () => {
+  assert.equal(shellTimeout(undefined), 120000);
+  assert.equal(shellTimeout(30000), 30000);
+  assert.equal(shellTimeout(3600000), 600000);
+  for (const bad of [0, -1, Number.NaN, Number.POSITIVE_INFINITY])
+    assert.throws(() => shellTimeout(bad), /positive number/);
 });

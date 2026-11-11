@@ -1,5 +1,7 @@
 import path from "node:path";
+import { settings } from "../../portable-paths.mjs";
 import { createExecutionDirectory } from "./execution-cleanup.mjs";
+import { assertProgramsAllowed } from "./tool-policy.mjs";
 import { createPrivateShell } from "./program-host.mjs";
 import { ExecutionFiles } from "./execution-files.mjs";
 export function privateExecution(getConfiguration, { root: storageRoot } = {}) {
@@ -12,6 +14,7 @@ export function privateExecution(getConfiguration, { root: storageRoot } = {}) {
   return {
     async execute(kind, request) {
       if (closing) throw Error("Private execution closed");
+      assertProgramsAllowed(settings);
       const { privateSession, privateFiles, ...spec } = request;
       const config = getConfiguration();
       const prepared = files.prepare(
@@ -67,6 +70,7 @@ export function privateExecution(getConfiguration, { root: storageRoot } = {}) {
     },
     async executePtc(request) {
       if (closing) throw Error("Private execution closed");
+      assertProgramsAllowed(settings);
       const { privateSession, privateFiles, ...spec } = request;
       const config = getConfiguration();
       const prepared = files.prepare(

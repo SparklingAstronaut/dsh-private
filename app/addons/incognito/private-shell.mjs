@@ -1,6 +1,7 @@
 import { mergeExecutionFiles } from "./execution-merge.mjs";
 import { moduleOf } from "./imports.mjs";
 import { row, checkpoint, assetPath } from "./private-data.mjs";
+import { shellTimeout } from "./tool-policy.mjs";
 const { ShellExecutor } = await moduleOf("@deepseek-ai/dsh-shell");
 export default class extends ShellExecutor {
   static inject = ["sandboxPolicy"];
@@ -17,6 +18,7 @@ export default class extends ShellExecutor {
     Object.assign(files, current.files ?? {});
     return {
       ...request,
+      timeoutMs: shellTimeout(request.timeoutMs),
       privateSession: current.header.id,
       privateBaseline: structuredClone(current.files ?? {}),
       privateFiles: files,

@@ -54,28 +54,60 @@ test("a linked legacy folder is refused and its target is left alone", () => {
 test("plugin changes that need the user's go-ahead", async () => {
   const previous = process.env.DSH_PRIVATE_DESKTOP_ROOT;
   process.env.DSH_PRIVATE_DESKTOP_ROOT ??= os.tmpdir();
+  const local = fs.mkdtempSync(path.join(os.tmpdir(), "dsh-plugin-consent-"));
   try {
-    const { consentRequest } = await import("../app/addons/incognito/plugin-host.mjs");
-    assert.deepEqual(consentRequest("installBundle", ["synthetic-plugin", {}]), {
+    const { consentRequest, declined } = await import("../app/addons/incognito/plugin-host.mjs");
+    // The Plugins page installs a bundle switched off, then asks to switch it on.
+    assert.deepEqual(consentRequest("installBundle", ["synthetic-plugin", { enabled: false }]), {
       action: "install",
       name: "synthetic-plugin",
     });
-    assert.deepEqual(consentRequest("setBundleEnabled", ["synthetic-plugin", true]), {
+    assert.deepEqual(consentRequest("installBundle", ["synthetic-plugin", {}]), {
+      action: "install-enable",
+      name: "synthetic-plugin",
+    });
+    const installed = { "synthetic-plugin": "file:../synthetic-plugin" };
+    assert.deepEqual(consentRequest("setBundleEnabled", ["synthetic-plugin", true], installed), {
       action: "enable",
       name: "synthetic-plugin",
     });
-    assert.deepEqual(consentRequest("setPluginEnabled", ["synthetic-row", true]), {
-      action: "enable",
-      name: "synthetic-row",
+    // DSH's own bundles are not installed into the profile and keep private mode's limits.
+    assert.equal(
+      consentRequest(
+        "setBundleEnabled",
+        ["@deepseek-ai/dsh-experimental-agent-team-profile", true],
+        installed,
+      ),
+      null,
+    );
+    // A local folder is shown by its package name, with the folder as the source.
+    fs.writeFileSync(path.join(local, "package.json"), JSON.stringify({ name: "synthetic-local-plugin" }));
+    assert.deepEqual(consentRequest("installBundle", [local, { enabled: false }]), {
+      action: "install",
+      name: "synthetic-local-plugin",
+      source: local,
     });
     for (const [method, args] of [
       ["setBundleEnabled", ["synthetic-plugin", false]],
+      ["setBundleEnabled", ["synthetic-plugin", true]],
+      ["setPluginEnabled", ["synthetic-row", true]],
       ["removeBundle", ["synthetic-plugin"]],
       ["inspect", ["synthetic-plugin", {}]],
       ["listBundles", []],
     ])
       assert.equal(consentRequest(method, args), null, method);
+    // Saying no: an install reads as cancelled on the Plugins page, a switch-on as still off.
+    assert.deepEqual(declined("installBundle", ["synthetic-plugin", { enabled: false }]), {
+      stage: "install",
+      target: "synthetic-plugin",
+      enabled: false,
+      changed: false,
+      application: "cancelled",
+    });
+    assert.throws(() => declined("setBundleEnabled", ["synthetic-plugin", true], "zh-CN"), /插件保持停用/);
+    assert.throws(() => declined("setBundleEnabled", ["synthetic-plugin", true], "en-US"), /stays off/);
   } finally {
+    fs.rmSync(local, { recursive: true, force: true });
     if (previous === undefined) delete process.env.DSH_PRIVATE_DESKTOP_ROOT;
     else process.env.DSH_PRIVATE_DESKTOP_ROOT = previous;
   }

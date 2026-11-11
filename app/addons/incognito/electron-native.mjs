@@ -144,20 +144,37 @@ async function closeInner(entry) {
   app.quit();
   return true;
 }
-// A plugin installed or enabled in private mode runs with full access, so the user decides.
-async function confirmPlugin(entry, { action, name }) {
-  const zh = settings.locale === "zh-CN";
+// A plugin bundle installed or switched on in private mode runs with full access, so the user
+// decides (see plugin-host.mjs).
+const PLUGIN_TEXT = {
+  zh: {
+    verbs: { install: "安装", "install-enable": "安装并启用", enable: "启用" },
+    off: "安装后先保持停用。启用后，它不受无痕保护：可以读取所有已解锁的聊天、在电脑上写文件、连接网络。只安装你信任的插件。",
+    on: "无痕模式中的插件不受无痕保护：它可以读取所有已解锁的聊天、在电脑上写文件、连接网络。只安装和启用你信任的插件。退出并重新进入无痕模式后生效。",
+    source: "来源：",
+    cancel: "取消",
+    message: (verb, label) => `在无痕模式中${verb}「${label}」？`,
+  },
+  en: {
+    verbs: { install: "Install", "install-enable": "Install and enable", enable: "Enable" },
+    off: "It stays off after installing. Once enabled, it is not covered by private mode's protections: it can read every unlocked chat, write files on this computer and connect to the network. Only install plugins you trust.",
+    on: "Plugins in private mode are not covered by its protections: a plugin can read every unlocked chat, write files on this computer and connect to the network. Only install and enable plugins you trust. The change takes effect after you exit and re-enter private mode.",
+    source: "Source: ",
+    cancel: "Cancel",
+    message: (verb, label) => `${verb} "${label}" in private mode?`,
+  },
+};
+async function confirmPlugin(entry, { action, name, source }) {
+  const text = PLUGIN_TEXT[settings.locale === "zh-CN" ? "zh" : "en"];
+  const verb = text.verbs[action] ?? text.verbs.enable;
   const label = String(name).slice(0, 200);
-  const install = action === "install";
   const answer = await dialog.showMessageBox(entry.window, {
     type: "warning",
-    message: zh
-      ? `在无痕模式中${install ? "安装" : "启用"}「${label}」？`
-      : `${install ? "Install" : "Enable"} "${label}" in private mode?`,
-    detail: zh
-      ? "无痕模式中的插件不受无痕保护：它可以读取所有已解锁的聊天、在电脑上写文件、连接网络。只安装和启用你信任的插件。退出并重新进入无痕模式后生效。"
-      : "Plugins in private mode are not covered by its protections: a plugin can read every unlocked chat, write files on this computer and connect to the network. Only install and enable plugins you trust. The change takes effect after you exit and re-enter private mode.",
-    buttons: zh ? ["取消", install ? "安装" : "启用"] : ["Cancel", install ? "Install" : "Enable"],
+    message: text.message(verb, label),
+    detail:
+      (action === "install" ? text.off : text.on) +
+      (source ? "\n\n" + text.source + String(source).slice(0, 300) : ""),
+    buttons: [text.cancel, verb],
     defaultId: 0,
     cancelId: 0,
     noLink: true,

@@ -1,29 +1,70 @@
-import { resolvePrivatePath } from "../../portable-paths.mjs";
+import { resolvePrivatePath, settings } from "../../portable-paths.mjs";
 import { removeLegacyPluginInputs } from "./execution-cleanup.mjs";
 import { moduleOf } from "./imports.mjs";
 import fs from "node:fs";
 import path from "node:path";
 import { ensurePluginProfile } from "./plugin-profile.mjs";
 
-// Folders that installed plugins were installed from (file: dependencies of the private profile).
-function installedFrom(dir) {
+// Packages installed into the private profile: its package.json dependencies.
+function dependenciesOf(dir) {
   try {
-    const manifest = JSON.parse(fs.readFileSync(path.join(dir, "package.json"), "utf8"));
-    return Object.values(manifest.dependencies ?? {})
-      .filter((spec) => typeof spec === "string" && spec.startsWith("file:"))
-      .map((spec) => path.resolve(dir, spec.slice(5)));
+    return JSON.parse(fs.readFileSync(path.join(dir, "package.json"), "utf8")).dependencies ?? {};
   } catch {
-    return [];
+    return {};
   }
 }
 
-// What needs the user's go-ahead: a plugin that is installed or enabled in private mode runs with
-// full access (it can read unlocked chats, write files and use the network).
-export function consentRequest(method, args) {
-  if (method === "installBundle") return { action: "install", name: String(args[0] ?? "") };
-  if ((method === "setBundleEnabled" || method === "setPluginEnabled") && args[1] === true)
-    return { action: "enable", name: String(args[0] ?? "") };
+// Folders that installed plugins were installed from (file: dependencies of the private profile).
+function installedFrom(dir) {
+  return Object.values(dependenciesOf(dir))
+    .filter((spec) => typeof spec === "string" && spec.startsWith("file:"))
+    .map((spec) => path.resolve(dir, spec.slice(5)));
+}
+
+// The name a dialog shows for a package spec: a local folder by its package.json name.
+function pluginLabel(spec) {
+  const folder = spec.startsWith("file:") ? spec.slice(5) : spec;
+  if (path.isAbsolute(folder))
+    try {
+      const { name } = JSON.parse(fs.readFileSync(path.join(folder, "package.json"), "utf8"));
+      if (typeof name === "string" && name.trim()) return name.trim();
+    } catch {}
+  return spec;
+}
+
+// What needs the user's go-ahead: a plugin bundle installed into private mode runs with full access
+// once it is switched on (it can read unlocked chats, write files and use the network). The Plugins
+// page installs a bundle switched off and then asks to switch it on, so each step asks once.
+// DSH's own bundles and rows are not installed into the profile; they run in the private chat
+// process under its limits, so switching them is not asked about, and neither are rows inside a
+// bundle that was.
+export function consentRequest(method, args, installed = {}) {
+  const spec = String(args[0] ?? "");
+  if (method === "installBundle") {
+    const name = pluginLabel(spec);
+    return {
+      action: args[1]?.enabled === false ? "install" : "install-enable",
+      name,
+      ...(name === spec ? {} : { source: spec }),
+    };
+  }
+  if (method === "setBundleEnabled" && args[1] === true && Object.hasOwn(installed, spec))
+    return { action: "enable", name: spec };
   return null;
+}
+
+// What the Plugins page gets when the user says no. An install answers like an install the user
+// stopped, which the page shows as cancelled; a switch-on reports that the bundle stays off.
+export function declined(method, args, locale = settings.locale) {
+  if (method === "installBundle")
+    return {
+      stage: "install",
+      target: String(args[0] ?? ""),
+      enabled: args[1]?.enabled ?? true,
+      changed: false,
+      application: "cancelled",
+    };
+  throw Error(locale === "zh-CN" ? "已取消，插件保持停用。" : "Cancelled; the plugin stays off.");
 }
 
 export async function createPrivatePluginManager({
@@ -73,8 +114,8 @@ export async function createPrivatePluginManager({
       if (closing || !methods.has(method)) throw Error("Private plugin operation unavailable");
       // Files from a chat are never installed as a plugin; packages come from the Plugins page.
       if (args.length > 2) throw Error("Install plugins from the Plugins page.");
-      const request = consentRequest(method, args);
-      if (request && !(await confirm(request))) throw Error("Cancelled.");
+      const request = consentRequest(method, args, dependenciesOf(profile.dir));
+      if (request && !(await confirm(request))) return declined(method, args);
       if (closing) throw Error("Private plugin operation unavailable");
       if (method === "installBundle" && typeof args[0] === "string" && path.isAbsolute(args[0]))
         args = ["file:" + args[0], ...args.slice(1)];

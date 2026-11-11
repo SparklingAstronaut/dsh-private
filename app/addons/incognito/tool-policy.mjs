@@ -67,3 +67,21 @@ export function applyToolPolicy(patches, settings) {
   for (const id of offIds) patches.push({ id, disabled: true });
   return patches;
 }
+
+// The app also refuses to run a program for a private chat while programs are off, whichever tool
+// or plugin row asks, so a tool that is not in the lists above cannot run one either.
+export function assertProgramsAllowed(settings) {
+  if (!toolPolicy(settings).programs)
+    throw Error('Programs are off in private mode. Set "shellAccess": true in settings.json to allow them.');
+}
+
+// DSH's own PowerShell limits (dsh-pwsh-local): 2 minutes unless the AI asks for another limit, and
+// at most 10 minutes. The pwsh tool waits this long before it moves a command to the background, so
+// the private chat process fills it in the same way the app does.
+export const SHELL_TIMEOUT_MS = 120000;
+export const SHELL_MAX_TIMEOUT_MS = 600000;
+export function shellTimeout(requested) {
+  if (requested !== undefined && (!Number.isFinite(requested) || requested <= 0))
+    throw Error("timeoutMs must be a positive number of milliseconds");
+  return Math.min(requested ?? SHELL_TIMEOUT_MS, SHELL_MAX_TIMEOUT_MS);
+}

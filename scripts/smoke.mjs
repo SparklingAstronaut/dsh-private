@@ -450,6 +450,12 @@ try {
     "Blocked network attempts in the private chat process:",
     (await runtime.call("status")).blockedNetwork,
   );
+  // Programs are off: the app refuses to run one for a private chat, whichever tool asks.
+  await assert.rejects(
+    runtime.execution.execute("run", { command: "Write-Output SYNTHETIC" }),
+    /Programs are off/,
+  );
+  await assert.rejects(runtime.execution.executePtc({ code: "1" }), /Programs are off/);
   await runtime.stop();
   runtime = null;
   backend.lock();
@@ -477,15 +483,29 @@ try {
         plugins.call(method, [pkg, {}, { sessionId: "synthetic", files }]),
         /Plugins page/,
       );
-    await assert.rejects(plugins.call("installBundle", ["synthetic-plugin", {}]), /Cancelled/);
-    await assert.rejects(plugins.call("setBundleEnabled", ["synthetic-plugin", true]), /Cancelled/);
+    // Without the user's go-ahead (no dialog here) nothing is installed or switched on.
+    assert.equal(
+      (await plugins.call("installBundle", ["synthetic-plugin", { enabled: false }])).application,
+      "cancelled",
+    );
+    // Switching on a bundle installed into private mode asks first; DSH's own bundles do not.
+    const manifest = path.join(plugins.profile.dir, "package.json");
+    const profileJson = JSON.parse(fs.readFileSync(manifest, "utf8"));
+    profileJson.dependencies = {
+      ...profileJson.dependencies,
+      "synthetic-plugin": "file:../synthetic-plugin",
+    };
+    fs.writeFileSync(manifest, JSON.stringify(profileJson, null, 2));
+    await assert.rejects(plugins.call("setBundleEnabled", ["synthetic-plugin", true]), /stays off/);
+    const appBundle = await plugins.call("setBundleEnabled", ["synthetic-app-bundle", true]);
+    assert.notEqual(appBundle.application, "cancelled", "DSH's own bundles are not asked about");
     assert.deepEqual(fs.readdirSync(executions), [], "No chat file may be written for a plugin");
     assert.equal(fs.existsSync(pkg), false);
   } finally {
     await plugins.close();
   }
   console.log(
-    "PASS encrypted cache, filesystem/MCP/execution adapters, portable runtime, authenticated UI, chat, encrypted readback, clean reopen, genuine unsaved changes, explicit save, network boundary, plugin consent, and shutdown.",
+    "PASS encrypted cache, filesystem/MCP/execution adapters, portable runtime, authenticated UI, chat, encrypted readback, clean reopen, genuine unsaved changes, explicit save, network boundary, program switch, plugin consent, and shutdown.",
   );
 } finally {
   await runtime?.stop().catch(() => {});
