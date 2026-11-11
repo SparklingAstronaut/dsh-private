@@ -11,16 +11,16 @@
 
 <p align="center">
   <a href="https://github.com/SparklingAstronaut/dsh-private/actions/workflows/verify.yml"><img src="https://github.com/SparklingAstronaut/dsh-private/actions/workflows/verify.yml/badge.svg" alt="Windows build verification"></a>
-  <a href="https://github.com/SparklingAstronaut/dsh-private/releases/tag/v0.1.0-preview.7"><img src="https://img.shields.io/badge/release-Preview%207-8b9fbb?style=flat-square" alt="Preview 7"></a>
+  <a href="https://github.com/SparklingAstronaut/dsh-private/releases/tag/v0.1.0-preview.8"><img src="https://img.shields.io/badge/release-Preview%208-8b9fbb?style=flat-square" alt="Preview 8"></a>
   <img src="https://img.shields.io/badge/Windows-10%20%2F%2011%20%C2%B7%20x64-536782?style=flat-square" alt="Windows 10 / 11 x64">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-607d73?style=flat-square" alt="MIT License"></a>
 </p>
 
-<h3 align="center"><a href="https://github.com/SparklingAstronaut/dsh-private/releases/download/v0.1.0-preview.7/DSH-Private-0.1.0-preview.7-windows-x64.zip">Download for Windows ↗</a></h3>
+<h3 align="center"><a href="https://github.com/SparklingAstronaut/dsh-private/releases/download/v0.1.0-preview.8/DSH-Private-0.1.0-preview.8-windows-x64.zip">Download for Windows ↗</a></h3>
 
 <p align="center">
-  <a href="https://github.com/SparklingAstronaut/dsh-private/releases/tag/v0.1.0-preview.7">Release notes</a> ·
-  <a href="https://github.com/SparklingAstronaut/dsh-private/releases/download/v0.1.0-preview.7/SHA256SUMS.txt">SHA-256 checksums</a> ·
+  <a href="https://github.com/SparklingAstronaut/dsh-private/releases/tag/v0.1.0-preview.8">Release notes</a> ·
+  <a href="https://github.com/SparklingAstronaut/dsh-private/releases/download/v0.1.0-preview.8/SHA256SUMS.txt">SHA-256 checksums</a> ·
   <a href="docs/configuration.md">Configuration</a> ·
   <a href="README.zh-CN.md">简体中文</a>
 </p>
@@ -65,7 +65,7 @@ Open the app, unlock, and talk to your own local model. Conversations are tempor
 
 Core chat and setup support English. Some advanced privacy and Studio dialogs currently use Chinese labels.
 
-**New in Preview 7:** DSH's internal-testing notice now appears only once. Before, it came back after every unlock and after deleting a chat. Saving and deleting from the chat's **⋯** menu, added in Preview 6, work as before. [View release →](https://github.com/SparklingAstronaut/dsh-private/releases/tag/v0.1.0-preview.7)
+**New in Preview 8:** private chats stay on this computer by default. The private chat process connects only to your local model, and the AI gets no web search, page fetching or programs (PowerShell, PTC, workflows) unless you turn them on with `webAccess` or `shellAccess` in `settings.json`. Tool adapters can no longer write files, even from native code, and plugins are never installed from chat files or without your confirmation. These fix the findings of a security review of Preview 7. [View release →](https://github.com/SparklingAstronaut/dsh-private/releases/tag/v0.1.0-preview.8)
 
 <details>
 <summary><strong>Optional: plugins, prompt skills, tools, and images</strong></summary>

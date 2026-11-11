@@ -11,16 +11,16 @@
 
 <p align="center">
   <a href="https://github.com/SparklingAstronaut/dsh-private/actions/workflows/verify.yml"><img src="https://github.com/SparklingAstronaut/dsh-private/actions/workflows/verify.yml/badge.svg" alt="Windows build verification"></a>
-  <a href="https://github.com/SparklingAstronaut/dsh-private/releases/tag/v0.1.0-preview.7"><img src="https://img.shields.io/badge/release-Preview%207-8b9fbb?style=flat-square" alt="Preview 7"></a>
+  <a href="https://github.com/SparklingAstronaut/dsh-private/releases/tag/v0.1.0-preview.8"><img src="https://img.shields.io/badge/release-Preview%208-8b9fbb?style=flat-square" alt="Preview 8"></a>
   <img src="https://img.shields.io/badge/Windows-10%20%2F%2011%20%C2%B7%20x64-536782?style=flat-square" alt="Windows 10 / 11 x64">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-607d73?style=flat-square" alt="MIT 许可证"></a>
 </p>
 
-<h3 align="center"><a href="https://github.com/SparklingAstronaut/dsh-private/releases/download/v0.1.0-preview.7/DSH-Private-0.1.0-preview.7-windows-x64.zip">下载 Windows 版 ↗</a></h3>
+<h3 align="center"><a href="https://github.com/SparklingAstronaut/dsh-private/releases/download/v0.1.0-preview.8/DSH-Private-0.1.0-preview.8-windows-x64.zip">下载 Windows 版 ↗</a></h3>
 
 <p align="center">
-  <a href="https://github.com/SparklingAstronaut/dsh-private/releases/tag/v0.1.0-preview.7">更新说明</a> ·
-  <a href="https://github.com/SparklingAstronaut/dsh-private/releases/download/v0.1.0-preview.7/SHA256SUMS.txt">SHA-256 校验值</a> ·
+  <a href="https://github.com/SparklingAstronaut/dsh-private/releases/tag/v0.1.0-preview.8">更新说明</a> ·
+  <a href="https://github.com/SparklingAstronaut/dsh-private/releases/download/v0.1.0-preview.8/SHA256SUMS.txt">SHA-256 校验值</a> ·
   <a href="docs/configuration.md">配置说明</a> ·
   <a href="README.md">English</a>
 </p>
@@ -65,7 +65,7 @@
 
 核心聊天和初始设置支持英文，部分高级隐私及 Studio 对话框目前使用中文标签。
 
-**Preview 7 更新：** DSH 的「内测声明」现在只出现一次，不会在每次解锁或删除聊天后重复弹出。Preview 6 加入的聊天 **⋯** 菜单（保存和删除）照常使用。[查看此版本 →](https://github.com/SparklingAstronaut/dsh-private/releases/tag/v0.1.0-preview.7)
+**Preview 8 更新：** 无痕聊天默认只留在这台电脑上。无痕聊天进程只连接你的本地模型；网页搜索、网页抓取和程序工具（PowerShell、PTC、工作流）默认关闭，需要时在 `settings.json` 里用 `webAccess`、`shellAccess` 打开。工具适配器即使通过原生代码也无法写文件；插件不会从聊天文件安装，也不会在你确认之前安装或启用。这些修复针对一次安全审查在 Preview 7 中发现的问题。[查看此版本 →](https://github.com/SparklingAstronaut/dsh-private/releases/tag/v0.1.0-preview.8)
 
 <details>
 <summary><strong>可选功能：插件、提示词、工具与生图</strong></summary>
