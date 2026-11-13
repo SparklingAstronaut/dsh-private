@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { strictRequested, strictSettings } from "../app/strict-mode.mjs";
+import { relaunchArgs, saveStrictMode, strictRequested, strictSettings } from "../app/strict-mode.mjs";
 import { normalWelcomeVersion, prepareSafeModeHome, removeTree } from "../app/safe-mode-home.mjs";
 import { toolPolicy } from "../app/addons/incognito/tool-policy.mjs";
 import { modelServerSpec } from "../app/model-engine.mjs";
@@ -113,4 +113,36 @@ test("modelServer must name an absolute program and may name a folder", () => {
     { command: [program], cwd: "relative" },
   ])
     assert.throws(() => modelServerSpec({ modelServer: { a: bad } }, "a"), /modelServer\.a/);
+});
+
+test("the mode switch keeps every other saved setting", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "dsh-strict-"));
+  try {
+    const saved = {
+      baseUrl: "http://127.0.0.1:18200/v1",
+      provider: "synthetic-provider",
+      modelEngine: "plugin",
+      mcp: { python: "C:/python.exe", servers: ["documents"] },
+      webAccess: true,
+      shellAccess: true,
+    };
+    const file = path.join(root, "settings.json");
+    fs.writeFileSync(file, JSON.stringify(saved));
+    saveStrictMode(root, true);
+    assert.deepEqual(JSON.parse(fs.readFileSync(file, "utf8")), { ...saved, strictMode: true });
+    saveStrictMode(root, false);
+    assert.deepEqual(JSON.parse(fs.readFileSync(file, "utf8")), saved);
+    fs.rmSync(file);
+    saveStrictMode(root, true);
+    assert.deepEqual(JSON.parse(fs.readFileSync(file, "utf8")), { strictMode: true });
+    assert.deepEqual(fs.readdirSync(root), ["settings.json"]);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("a restart drops Safe Mode's flag, and --strict only after a mode switch", () => {
+  const argv = ["DSH Private.exe", "--remote-debugging-port=9333", "--strict", "--dsh-desktop-safe-mode"];
+  assert.deepEqual(relaunchArgs(argv), ["--remote-debugging-port=9333", "--strict"]);
+  assert.deepEqual(relaunchArgs(argv, { modeSwitch: true }), ["--remote-debugging-port=9333"]);
 });

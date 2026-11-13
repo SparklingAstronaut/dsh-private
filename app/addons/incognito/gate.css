@@ -197,3 +197,45 @@ details button {
   color: #f68b83;
   font-size: 13px;
 }
+
+/* Normal / Strict mode switch */
+.mode {
+  display: grid;
+  gap: 10px;
+  margin: 20px 0 0;
+  border-top: 1px solid var(--border);
+  padding-top: 16px;
+}
+.mode-label {
+  font-size: 14px;
+}
+.mode-switch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--field);
+}
+.mode-switch button {
+  min-height: 36px;
+  padding: 6px 10px;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--muted);
+}
+.mode-switch button:hover {
+  color: var(--text);
+}
+.mode-switch button[aria-checked="true"] {
+  background: var(--button);
+  color: var(--button-text);
+  font-weight: 500;
+  cursor: default;
+}
+#modeHint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+}

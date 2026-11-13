@@ -1,5 +1,7 @@
 const $ = (id) => document.getElementById(id);
 let language = "en-US";
+// Normal or strict mode (strict-mode.mjs). Switching saves the choice and restarts the app.
+let strict = false;
 const word = (en, zh) => (language === "zh-CN" ? zh : en);
 async function call(method, args = {}) {
   const r = await window.incognito.call(method, args);
@@ -41,10 +43,43 @@ function render() {
     "Chats stay temporary unless you explicitly save them to the encrypted vault.",
     "聊天默认不保存；手动保存的聊天会加密存储在本机。",
   );
+  renderMode();
 }
+function renderMode() {
+  $("modeLabel").textContent = word("Mode", "模式");
+  $("modeNormal").textContent = word("Normal", "普通模式");
+  $("modeStrict").textContent = word("Strict", "严格模式");
+  $("modeNormal").setAttribute("aria-checked", String(!strict));
+  $("modeStrict").setAttribute("aria-checked", String(strict));
+  $("modeHint").textContent = strict
+    ? word(
+        "Strict mode: no plugins or tool adapters you added, and no web or program tools. Switching restarts the app.",
+        "严格模式：不加载你添加的插件和工具适配器，没有网页和程序工具。切换后应用会重启。",
+      )
+    : word(
+        "Strict mode leaves out the plugins and tool adapters you added, and web and program tools. Switching restarts the app.",
+        "严格模式不加载你添加的插件和工具适配器，也没有网页和程序工具。切换后应用会重启。",
+      );
+}
+function switchMode(on) {
+  if (on === strict || $("modeNormal").disabled) return;
+  run(async () => {
+    $("modeNormal").disabled = $("modeStrict").disabled = true;
+    try {
+      await call("mode-set", { strict: on });
+      $("modeHint").textContent = word("Restarting…", "正在重启…");
+    } catch (e) {
+      $("modeNormal").disabled = $("modeStrict").disabled = false;
+      throw e;
+    }
+  });
+}
+$("modeNormal").onclick = () => switchMode(false);
+$("modeStrict").onclick = () => switchMode(true);
 run(async () => {
   const c = await call("connection-config");
   language = c.locale;
+  strict = c.strictMode === true;
   for (const k of ["baseUrl", "modelA", "modelB", "locale"]) $(k).value = c[k];
   if (!c.modelA) $("connection").open = true;
   render();

@@ -27,14 +27,14 @@ Private tool adapters and plugins have their own rules, described below. Restart
 
 ## Strict mode
 
-Strict mode runs only DSH, the private-mode core and your local model server. Start `DSH Private.exe --strict` (for example from a second shortcut), or set `"strictMode": true` to always start this way. The window title then reads **DSH Private · Strict mode**.
+Strict mode runs only DSH, the private-mode core and your local model server. Choose **Strict** under **Mode** on the password screen: the app restarts in strict mode, and starts that way until you choose **Normal** there. The window title then reads **DSH Private · Strict mode**. The switch saves `"strictMode": true` in `settings.json`; `DSH Private.exe --strict` starts in strict mode once.
 
 - No plugins you added run. Normal DSH starts in its own Safe Mode: a fresh home, without the plugins you added, that is deleted when the app exits. Private mode loads only DSH's own bundles, and its Plugins page cannot add plugins.
 - No tool adapters start, and the AI gets no web or program tools, whatever `mcp`, `webAccess` and `shellAccess` say.
 - Private chats use the built-in model connection; `provider` and `modelEngine` are ignored. Your model server must be running, or the app starts it from `modelServer`.
 - Private Studio cannot make images, because that needs an image plugin.
 
-Your vault, settings and saved chats are the same in both modes. The internal-testing notice you acknowledged in normal mode stays acknowledged.
+Your vault, settings and saved chats are the same in both modes, and changing Connection settings in strict mode keeps your other settings. The internal-testing notice you acknowledged in normal mode stays acknowledged.
 
 ## Model server
 

@@ -7,7 +7,8 @@ import { recoverExecutionDirectories } from "./execution-cleanup.mjs";
 import { recoverPrivateCaches } from "./private-cache.mjs";
 import { installDownloads } from "./downloads.mjs";
 import { chatAction } from "./chat-actions.mjs";
-import { settings } from "../../portable-paths.mjs";
+import { dataRoot, settings } from "../../portable-paths.mjs";
+import { relaunchArgs, saveStrictMode } from "../../strict-mode.mjs";
 import { app, BrowserWindow, WebContentsView, ipcMain, powerMonitor, dialog } from "electron";
 import fs from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -389,7 +390,19 @@ ipcMain.handle("dsh-incognito-action", async (event, method, args = {}) => {
       config.saveConnection(args);
       setImmediate(() => {
         quitting = true;
-        app.relaunch();
+        app.relaunch({ args: relaunchArgs() });
+        app.exit(0);
+      });
+      return { ok: true, value: true };
+    }
+    // The password screen's Normal / Strict switch: saved in settings.json, then a restart into it.
+    if (method === "mode-set") {
+      if (entry.backend.vault.key) throw Error("Lock the app before switching modes.");
+      if (typeof args.strict !== "boolean") throw Error("请求无效。");
+      saveStrictMode(dataRoot, args.strict);
+      setImmediate(() => {
+        quitting = true;
+        app.relaunch({ args: relaunchArgs(process.argv, { modeSwitch: true }) });
         app.exit(0);
       });
       return { ok: true, value: true };

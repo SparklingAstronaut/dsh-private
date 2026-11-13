@@ -39,6 +39,14 @@
           <button id="unlock" class="primary" type="submit">解锁</button>
         </form>
         <p id="setupNotice" role="status" hidden></p>
+        <div class="mode">
+          <span id="modeLabel" class="mode-label">模式</span>
+          <div class="mode-switch" role="radiogroup" aria-labelledby="modeLabel">
+            <button id="modeNormal" type="button" role="radio" aria-checked="true">普通模式</button
+            ><button id="modeStrict" type="button" role="radio" aria-checked="false">严格模式</button>
+          </div>
+          <p id="modeHint" role="status"></p>
+        </div>
         <details id="connection">
           <summary>Connection / 本地模型设置</summary>
           <p class="hint">Connect your own local OpenAI-compatible server. / 连接自己的本地模型服务。</p>
