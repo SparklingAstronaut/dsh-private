@@ -11,16 +11,16 @@
 
 <p align="center">
   <a href="https://github.com/SparklingAstronaut/dsh-private/actions/workflows/verify.yml"><img src="https://github.com/SparklingAstronaut/dsh-private/actions/workflows/verify.yml/badge.svg" alt="Windows build verification"></a>
-  <a href="https://github.com/SparklingAstronaut/dsh-private/releases/tag/v0.1.0-preview.9"><img src="https://img.shields.io/badge/release-Preview%209-8b9fbb?style=flat-square" alt="Preview 9"></a>
+  <a href="https://github.com/SparklingAstronaut/dsh-private/releases/tag/v0.1.0-preview.10"><img src="https://img.shields.io/badge/release-Preview%2010-8b9fbb?style=flat-square" alt="Preview 10"></a>
   <img src="https://img.shields.io/badge/Windows-10%20%2F%2011%20%C2%B7%20x64-536782?style=flat-square" alt="Windows 10 / 11 x64">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-607d73?style=flat-square" alt="MIT License"></a>
 </p>
 
-<h3 align="center"><a href="https://github.com/SparklingAstronaut/dsh-private/releases/download/v0.1.0-preview.9/DSH-Private-0.1.0-preview.9-windows-x64.zip">Download for Windows ↗</a></h3>
+<h3 align="center"><a href="https://github.com/SparklingAstronaut/dsh-private/releases/download/v0.1.0-preview.10/DSH-Private-0.1.0-preview.10-windows-x64.zip">Download for Windows ↗</a></h3>
 
 <p align="center">
-  <a href="https://github.com/SparklingAstronaut/dsh-private/releases/tag/v0.1.0-preview.9">Release notes</a> ·
-  <a href="https://github.com/SparklingAstronaut/dsh-private/releases/download/v0.1.0-preview.9/SHA256SUMS.txt">SHA-256 checksums</a> ·
+  <a href="https://github.com/SparklingAstronaut/dsh-private/releases/tag/v0.1.0-preview.10">Release notes</a> ·
+  <a href="https://github.com/SparklingAstronaut/dsh-private/releases/download/v0.1.0-preview.10/SHA256SUMS.txt">SHA-256 checksums</a> ·
   <a href="docs/configuration.md">Configuration</a> ·
   <a href="README.zh-CN.md">简体中文</a>
 </p>
@@ -65,7 +65,7 @@ Open the app, unlock, and talk to your own local model. Conversations are tempor
 
 Core chat and setup support English. Some advanced privacy and Studio dialogs currently use Chinese labels.
 
-**New in Preview 9:** a **strict mode** for your most sensitive chats. Start `DSH Private.exe --strict` (for example from a second shortcut) and the app runs without the plugins and tool adapters you added, and the AI gets no web or program tools, whatever `settings.json` says. Programs that DSH Private starts, such as tool adapters and your model server, no longer leave Windows crash dumps that could contain chat text, and `modelServer` in `settings.json` lets the app start and stop your model server itself. Each release ZIP now has a GitHub build attestation that you can check with `gh attestation verify`. [View release →](https://github.com/SparklingAstronaut/dsh-private/releases/tag/v0.1.0-preview.9)
+**New in Preview 10:** switch between **Normal** and **Strict** mode on the password screen. The app remembers your choice, so one shortcut is enough. Saving Connection settings in strict mode no longer drops your plugin, adapter and tool settings from `settings.json`. Preview 9 added strict mode, which runs without the plugins and tool adapters you added and without web or program tools; it also stopped programs the app starts from leaving Windows crash dumps, and added build attestations you can check with `gh attestation verify`. [View release →](https://github.com/SparklingAstronaut/dsh-private/releases/tag/v0.1.0-preview.10)
 
 <details>
 <summary><strong>Optional: plugins, prompt skills, tools, and images</strong></summary>

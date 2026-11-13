@@ -11,16 +11,16 @@
 
 <p align="center">
   <a href="https://github.com/SparklingAstronaut/dsh-private/actions/workflows/verify.yml"><img src="https://github.com/SparklingAstronaut/dsh-private/actions/workflows/verify.yml/badge.svg" alt="Windows build verification"></a>
-  <a href="https://github.com/SparklingAstronaut/dsh-private/releases/tag/v0.1.0-preview.9"><img src="https://img.shields.io/badge/release-Preview%209-8b9fbb?style=flat-square" alt="Preview 9"></a>
+  <a href="https://github.com/SparklingAstronaut/dsh-private/releases/tag/v0.1.0-preview.10"><img src="https://img.shields.io/badge/release-Preview%2010-8b9fbb?style=flat-square" alt="Preview 10"></a>
   <img src="https://img.shields.io/badge/Windows-10%20%2F%2011%20%C2%B7%20x64-536782?style=flat-square" alt="Windows 10 / 11 x64">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-607d73?style=flat-square" alt="MIT 许可证"></a>
 </p>
 
-<h3 align="center"><a href="https://github.com/SparklingAstronaut/dsh-private/releases/download/v0.1.0-preview.9/DSH-Private-0.1.0-preview.9-windows-x64.zip">下载 Windows 版 ↗</a></h3>
+<h3 align="center"><a href="https://github.com/SparklingAstronaut/dsh-private/releases/download/v0.1.0-preview.10/DSH-Private-0.1.0-preview.10-windows-x64.zip">下载 Windows 版 ↗</a></h3>
 
 <p align="center">
-  <a href="https://github.com/SparklingAstronaut/dsh-private/releases/tag/v0.1.0-preview.9">更新说明</a> ·
-  <a href="https://github.com/SparklingAstronaut/dsh-private/releases/download/v0.1.0-preview.9/SHA256SUMS.txt">SHA-256 校验值</a> ·
+  <a href="https://github.com/SparklingAstronaut/dsh-private/releases/tag/v0.1.0-preview.10">更新说明</a> ·
+  <a href="https://github.com/SparklingAstronaut/dsh-private/releases/download/v0.1.0-preview.10/SHA256SUMS.txt">SHA-256 校验值</a> ·
   <a href="docs/configuration.md">配置说明</a> ·
   <a href="README.md">English</a>
 </p>
@@ -65,7 +65,7 @@
 
 核心聊天和初始设置支持英文，部分高级隐私及 Studio 对话框目前使用中文标签。
 
-**Preview 9 更新：** 新增**严格模式**，适合最敏感的聊天。用 `DSH Private.exe --strict` 启动（例如另建一个快捷方式），应用不加载你添加的插件和工具适配器，AI 也没有网页和程序工具，不论 `settings.json` 怎么设置。DSH Private 启动的程序（例如工具适配器和你的模型服务器）崩溃时，不再留下可能含有聊天内容的 Windows 崩溃转储；`settings.json` 里的 `modelServer` 可以让应用自己启动和停止模型服务器。每个发布 ZIP 现在都附有 GitHub 构建证明，可以用 `gh attestation verify` 核对。[查看此版本 →](https://github.com/SparklingAstronaut/dsh-private/releases/tag/v0.1.0-preview.9)
+**Preview 10 更新：** 在密码页的「模式」里切换普通模式和严格模式，应用会记住你的选择，一个快捷方式就够了。在严格模式里保存连接设置，不会再把插件、适配器和工具开关从 `settings.json` 里删掉。Preview 9 新增了严格模式（不加载你添加的插件和工具适配器，没有网页和程序工具），让应用启动的程序崩溃时不再留下 Windows 崩溃转储，并为下载附上可以用 `gh attestation verify` 核对的构建证明。[查看此版本 →](https://github.com/SparklingAstronaut/dsh-private/releases/tag/v0.1.0-preview.10)
 
 <details>
 <summary><strong>可选功能：插件、提示词、工具与生图</strong></summary>
